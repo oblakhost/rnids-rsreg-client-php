@@ -7,8 +7,14 @@ namespace Tests\Unit\Connection;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Connection\EppFrameCodec;
 
+/**
+ * Unit tests for EPP frame prefix encoding and decoding.
+ */
 final class EppFrameCodecTest extends TestCase
 {
+    /**
+     * Ensures encoded frames include correct network-order length prefix.
+     */
     public function testEncodeAddsLengthPrefix(): void
     {
         $codec = new EppFrameCodec();
@@ -20,6 +26,9 @@ final class EppFrameCodecTest extends TestCase
         self::assertSame('<epp/>', \substr($frame, 4));
     }
 
+    /**
+     * Ensures payload length is properly derived from a frame prefix.
+     */
     public function testDecodeLengthPrefixReturnsPayloadLength(): void
     {
         $codec = new EppFrameCodec();

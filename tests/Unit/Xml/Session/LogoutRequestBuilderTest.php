@@ -7,8 +7,14 @@ namespace Tests\Unit\Xml\Session;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Xml\Session\LogoutRequestBuilder;
 
+/**
+ * Unit tests for logout request XML generation.
+ */
 final class LogoutRequestBuilderTest extends TestCase
 {
+    /**
+     * Verifies generated logout XML includes escaped clTRID value.
+     */
     public function testBuildCreatesLogoutEnvelopeWithEscapedClTrid(): void
     {
         $builder = new LogoutRequestBuilder();

@@ -7,8 +7,14 @@ namespace RNIDS\Exception;
 use RNIDS\Xml\Response\EppResultCode;
 use RNIDS\Xml\Response\ResponseMetadata;
 
+/**
+ * Maps EPP result codes to the most specific protocol exception type.
+ */
 final class ProtocolExceptionFactory
 {
+    /**
+     * Creates a protocol exception instance based on response metadata.
+     */
     public static function fromMetadata(ResponseMetadata $responseMetadata): \RNIDS\Exception\ProtocolException
     {
         return match ($responseMetadata->knownResultCode()) {

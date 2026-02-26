@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RNIDS\Connection;
 
+/**
+ * Immutable connection options for the EPP transport.
+ */
 final class ConnectionConfig
 {
     public readonly string $hostname;
@@ -14,6 +17,12 @@ final class ConnectionConfig
 
     public readonly int $readTimeoutSeconds;
 
+    /**
+     * @param string $hostname EPP server hostname.
+     * @param int $port EPP server port.
+     * @param int $connectTimeoutSeconds Connection timeout in seconds.
+     * @param int $readTimeoutSeconds Read timeout in seconds.
+     */
     public function __construct(
         string $hostname,
         int $port = 700,

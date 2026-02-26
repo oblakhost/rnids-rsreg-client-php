@@ -8,8 +8,14 @@ use PHPUnit\Framework\TestCase;
 use RNIDS\Exception\MalformedResponseException;
 use RNIDS\Xml\Response\ResponseMetadataParser;
 
+/**
+ * Unit tests for extracting response metadata from EPP XML.
+ */
 final class ResponseMetadataParserTest extends TestCase
 {
+    /**
+     * Verifies parser extracts result fields and transaction identifiers.
+     */
     public function testParseExtractsResultAndTransactionMetadata(): void
     {
         $parser = new ResponseMetadataParser();
@@ -28,6 +34,9 @@ final class ResponseMetadataParserTest extends TestCase
         self::assertSame('SV-1', $metadata->serverTransactionId);
     }
 
+    /**
+     * Verifies greeting frames are mapped to synthetic successful metadata.
+     */
     public function testParseMapsGreetingToSyntheticSuccessMetadata(): void
     {
         $parser = new ResponseMetadataParser();
@@ -43,6 +52,9 @@ final class ResponseMetadataParserTest extends TestCase
         self::assertNull($metadata->serverTransactionId);
     }
 
+    /**
+     * Verifies malformed responses without result code or greeting throw.
+     */
     public function testParseThrowsWhenResultCodeAndGreetingAreMissing(): void
     {
         $parser = new ResponseMetadataParser();

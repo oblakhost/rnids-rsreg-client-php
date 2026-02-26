@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Response;
 
+/**
+ * Standard EPP result codes used by protocol responses.
+ */
 enum EppResultCode: int
 {
     case CommandCompletedSuccessfully = 1000;

@@ -10,8 +10,14 @@ use RNIDS\Exception\ProtocolException;
 use RNIDS\Xml\Response\ResponseMetadata;
 use RNIDS\Xml\ResultCodePolicy;
 
+/**
+ * Unit tests for result code success/failure enforcement policy.
+ */
 final class ResultCodePolicyTest extends TestCase
 {
+    /**
+     * Verifies known successful codes pass without exception.
+     */
     public function testAssertSuccessDoesNotThrowForKnownSuccessCode(): void
     {
         ResultCodePolicy::assertSuccess($this->metadata(1000));
@@ -19,6 +25,9 @@ final class ResultCodePolicyTest extends TestCase
         self::assertTrue(true);
     }
 
+    /**
+     * Verifies known failure codes map to specific exceptions.
+     */
     public function testAssertSuccessThrowsMappedExceptionForKnownFailureCode(): void
     {
         $this->expectException(AuthenticationFailure::class);
@@ -26,6 +35,9 @@ final class ResultCodePolicyTest extends TestCase
         ResultCodePolicy::assertSuccess($this->metadata(2200));
     }
 
+    /**
+     * Verifies unknown failure codes throw generic ProtocolException.
+     */
     public function testAssertSuccessThrowsGenericProtocolExceptionForUnknownFailureCode(): void
     {
         try {
@@ -36,6 +48,9 @@ final class ResultCodePolicyTest extends TestCase
         }
     }
 
+    /**
+     * Builds response metadata fixture with provided numeric result code.
+     */
     private function metadata(int $resultCode): ResponseMetadata
     {
         return new ResponseMetadata($resultCode, 'message', 'CL-1', 'SV-1');

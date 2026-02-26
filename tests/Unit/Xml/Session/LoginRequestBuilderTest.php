@@ -8,8 +8,14 @@ use PHPUnit\Framework\TestCase;
 use RNIDS\Session\Dto\LoginRequest;
 use RNIDS\Xml\Session\LoginRequestBuilder;
 
+/**
+ * Unit tests for login request XML generation.
+ */
 final class LoginRequestBuilderTest extends TestCase
 {
+    /**
+     * Verifies generated login XML includes escaped credentials and services.
+     */
     public function testBuildCreatesLoginEnvelopeWithEscapedValuesAndServices(): void
     {
         $builder = new LoginRequestBuilder();
@@ -37,6 +43,9 @@ final class LoginRequestBuilderTest extends TestCase
         self::assertStringContainsString('</command></epp>', $xml);
     }
 
+    /**
+     * Verifies services block is omitted when URIs are not provided.
+     */
     public function testBuildOmitsServicesWhenUrisAreNotProvided(): void
     {
         $builder = new LoginRequestBuilder();
