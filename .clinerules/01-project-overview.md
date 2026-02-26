@@ -20,5 +20,5 @@ $client->domain()->register(...);
 
 - PHP library distributed via Composer
 - Namespace root: `RNIDS\`
-- PHP >= 8.0 (platform configured to 8.1)
+- Minimum PHP version: 8.1 - leveraging modern features like union types, attributes, and readonly properties
 - ReactPHP components for socket/event-loop based communication

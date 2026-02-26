@@ -1,0 +1,13 @@
+Za uspostavljanje veze sa serverom u produkciji će biti neophodno da klijent prilikom povezivanja pošalje i klijentski sertifikat. 
+Validni su sertifikati koji se trenutno koriste za povezivanje sa javnim web servisima (RsReg aplikacija).
+Konvertovanje sertifikata iz pfx u pem format se radi pomoću OpenSSL-a. Komanda je: OpenSSL pkcs12 -in vassertifikat.pfx -out vassertifikat.pem -nodes
+Ukoliko php podešavanja zahtevaju učitavanje CA sertifikata, isti možete download-ovati sa stranice za download software-a (RNIDS sertifikat (PEM)) i učitati na isti način kao i klijentski sertifikat (postoji primer u klasi rnidsEppConnection)
+
+- U klasi \Registries\rnidsEppConnection\eppConnection.php treba podesiti:
+	hostname, 
+	username, 
+	password, 
+	port,
+	klijentski sertifikat,
+	ca sertifikat 
+- Primeri se nalaze u direktorijumu \Examples\ i pokrecu se iz komandne linije.
