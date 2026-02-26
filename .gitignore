@@ -1,0 +1,14 @@
+vendor/
+.phpunit.cache/
+
+# Local/editor artifacts
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Local certificate material (never commit)
+*.pem
+*.pfx
+*.crt
+*.key
