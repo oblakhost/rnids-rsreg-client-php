@@ -14,20 +14,29 @@ use RNIDS\Xml\Domain\DomainCheckRequestBuilder;
 use RNIDS\Xml\Domain\DomainCheckResponseParser;
 use RNIDS\Xml\Domain\DomainInfoRequestBuilder;
 use RNIDS\Xml\Domain\DomainInfoResponseParser;
+use RNIDS\Xml\Domain\DomainRegisterRequestBuilder;
+use RNIDS\Xml\Domain\DomainRegisterResponseParser;
 
+/**
+ * Provides domain command operations for check, info, and register flows.
+ */
 final class DomainService
 {
     private CommandExecutor $executor;
 
     private ClTridGenerator $tridGenerator;
 
+    private DomainRegisterRequestFactory $registerRequestFactory;
+
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
         ?ClTridGenerator $tridGenerator = null,
+        ?DomainRegisterRequestFactory $registerRequestFactory = null,
     ) {
         $this->executor = $executor ?? new CommandExecutor($transport);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('DOMAIN');
+        $this->registerRequestFactory = $registerRequestFactory ?? new DomainRegisterRequestFactory();
     }
 
     /**
@@ -162,6 +171,60 @@ final class DomainService
                 ),
                 'updateClientId' => $response->updateClientId,
                 'updateDate' => $response->updateDate,
+            ],
+            'metadata' => [
+                'clientTransactionId' => $response->metadata->clientTransactionId,
+                'message' => $response->metadata->message,
+                'resultCode' => $response->metadata->resultCode,
+                'serverTransactionId' => $response->metadata->serverTransactionId,
+            ],
+        ];
+    }
+
+    /**
+     * @param array{
+     *   name?: mixed,
+     *   period?: mixed,
+     *   periodUnit?: mixed,
+     *   nameservers?: mixed,
+     *   registrant?: mixed,
+     *   contacts?: mixed,
+     *   authInfo?: mixed,
+     *   extension?: mixed
+     * } $request
+     *
+     * @return array{
+     *   metadata: array{
+     *     clientTransactionId: string|null,
+     *     message: string,
+     *     resultCode: int,
+     *     serverTransactionId: string|null
+     *   },
+     *   creation: array{
+     *     name: string|null,
+     *     createDate: string|null,
+     *     expirationDate: string|null
+     *   }
+     * }
+     */
+    public function register(array $request): array
+    {
+        $xml = (new DomainRegisterRequestBuilder())->build(
+            $this->registerRequestFactory->fromArray($request),
+            $this->tridGenerator->nextId(),
+        );
+
+        $response = $this->executor->execute(
+            $xml,
+            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                (new DomainRegisterResponseParser())->parse($responseXml, $metadata),
+        );
+
+        return [
+            'creation' => [
+                'createDate' => $response->createDate,
+                'expirationDate' => $response->expirationDate,
+                'name' => $response->name,
             ],
             'metadata' => [
                 'clientTransactionId' => $response->metadata->clientTransactionId,
