@@ -25,6 +25,7 @@ use RNIDS\Xml\Domain\DomainRenewRequestBuilder;
 use RNIDS\Xml\Domain\DomainRenewResponseParser;
 use RNIDS\Xml\Domain\DomainTransferRequestBuilder;
 use RNIDS\Xml\Domain\DomainTransferResponseParser;
+use RNIDS\Xml\Response\LastResponseMetadata;
 
 /**
  * Provides domain command operations for check, info, and register flows.
@@ -47,8 +48,9 @@ final class DomainService
         ?CommandExecutor $executor = null,
         ?ClTridGenerator $tridGenerator = null,
         ?DomainRegisterRequestFactory $registerRequestFactory = null,
+        ?LastResponseMetadata $lastResponseMetadata = null,
     ) {
-        $this->executor = $executor ?? new CommandExecutor($transport);
+        $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('DOMAIN');
         $this->registerRequestFactory = $registerRequestFactory ?? new DomainRegisterRequestFactory();
     }
@@ -56,15 +58,7 @@ final class DomainService
     /**
      * @param array{names?: mixed} $request
      *
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   items: list<array{name: string, available: bool, reason: string|null}>
-     * }
+     * @return array{items: list<array{name: string, available: bool, reason: string|null}>}
      */
     public function check(array $request): array
     {
@@ -88,43 +82,29 @@ final class DomainService
                 ],
                 $response->items,
             ),
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
         ];
     }
 
     /**
      * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   info: array{
-     *     name: string|null,
-     *     roid: string|null,
-     *     statuses: list<array{value: string, description: string|null}>,
-     *     registrant: string|null,
-     *     contacts: list<array{type: string, handle: string}>,
-     *     nameservers: list<array{name: string, addresses: list<string>}>,
-     *     clientId: string|null,
-     *     createClientId: string|null,
-     *     updateClientId: string|null,
-     *     createDate: string|null,
-     *     updateDate: string|null,
-     *     expirationDate: string|null,
-     *     extension: array{
-     *       isWhoisPrivacy: string|null,
-     *       operationMode: string|null,
-     *       notifyAdmin: string|null,
-     *       dnsSec: string|null,
-     *       remark: string|null
-     *     }
+     *   name: string|null,
+     *   roid: string|null,
+     *   statuses: list<array{value: string, description: string|null}>,
+     *   registrant: string|null,
+     *   contacts: list<array{type: string, handle: string}>,
+     *   nameservers: list<array{name: string, addresses: list<string>}>,
+     *   clientId: string|null,
+     *   createClientId: string|null,
+     *   updateClientId: string|null,
+     *   createDate: string|null,
+     *   updateDate: string|null,
+     *   expirationDate: string|null,
+     *   extension: array{
+     *     isWhoisPrivacy: string|null,
+     *     operationMode: string|null,
+     *     notifyAdmin: string|null,
+     *     dnsSec: string|null,
+     *     remark: string|null
      *   }
      * }
      */
@@ -145,51 +125,43 @@ final class DomainService
         );
 
         return [
-            'info' => [
-                'clientId' => $response->clientId,
-                'contacts' => \array_map(
-                    static fn(\RNIDS\Domain\Dto\DomainInfoContact $contact): array => [
+            'clientId' => $response->clientId,
+            'contacts' => \array_map(
+                static fn(\RNIDS\Domain\Dto\DomainInfoContact $contact): array => [
                         'handle' => $contact->handle,
                         'type' => $contact->type,
                     ],
-                    $response->contacts,
-                ),
-                'createClientId' => $response->createClientId,
-                'createDate' => $response->createDate,
-                'expirationDate' => $response->expirationDate,
-                'extension' => [
-                    'dnsSec' => $response->extension->dnsSec,
-                    'isWhoisPrivacy' => $response->extension->isWhoisPrivacy,
-                    'notifyAdmin' => $response->extension->notifyAdmin,
-                    'operationMode' => $response->extension->operationMode,
-                    'remark' => $response->extension->remark,
-                ],
-                'name' => $response->name,
-                'nameservers' => \array_map(
-                    static fn(\RNIDS\Domain\Dto\DomainInfoNameserver $nameserver): array => [
+                $response->contacts,
+            ),
+            'createClientId' => $response->createClientId,
+            'createDate' => $response->createDate,
+            'expirationDate' => $response->expirationDate,
+            'extension' => [
+                'dnsSec' => $response->extension->dnsSec,
+                'isWhoisPrivacy' => $response->extension->isWhoisPrivacy,
+                'notifyAdmin' => $response->extension->notifyAdmin,
+                'operationMode' => $response->extension->operationMode,
+                'remark' => $response->extension->remark,
+            ],
+            'name' => $response->name,
+            'nameservers' => \array_map(
+                static fn(\RNIDS\Domain\Dto\DomainInfoNameserver $nameserver): array => [
                         'addresses' => $nameserver->addresses,
                         'name' => $nameserver->name,
                     ],
-                    $response->nameservers,
-                ),
-                'registrant' => $response->registrant,
-                'roid' => $response->roid,
-                'statuses' => \array_map(
-                    static fn(\RNIDS\Domain\Dto\DomainInfoStatus $status): array => [
+                $response->nameservers,
+            ),
+            'registrant' => $response->registrant,
+            'roid' => $response->roid,
+            'statuses' => \array_map(
+                static fn(\RNIDS\Domain\Dto\DomainInfoStatus $status): array => [
                         'description' => $status->description,
                         'value' => $status->value,
                     ],
-                    $response->statuses,
-                ),
-                'updateClientId' => $response->updateClientId,
-                'updateDate' => $response->updateDate,
-            ],
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
+                $response->statuses,
+            ),
+            'updateClientId' => $response->updateClientId,
+            'updateDate' => $response->updateDate,
         ];
     }
 
@@ -205,19 +177,7 @@ final class DomainService
      *   extension?: mixed
      * } $request
      *
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   creation: array{
-     *     name: string|null,
-     *     createDate: string|null,
-     *     expirationDate: string|null
-     *   }
-     * }
+     * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
      */
     public function register(array $request): array
     {
@@ -233,35 +193,16 @@ final class DomainService
         );
 
         return [
-            'creation' => [
-                'createDate' => $response->createDate,
-                'expirationDate' => $response->expirationDate,
-                'name' => $response->name,
-            ],
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
+            'createDate' => $response->createDate,
+            'expirationDate' => $response->expirationDate,
+            'name' => $response->name,
         ];
     }
 
     /**
      * @param array{name?: mixed, currentExpirationDate?: mixed, period?: mixed, periodUnit?: mixed} $request
      *
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   renewal: array{
-     *     name: string|null,
-     *     expirationDate: string|null
-     *   }
-     * }
+     * @return array{name: string|null, expirationDate: string|null}
      */
     public function renew(array $request): array
     {
@@ -282,28 +223,13 @@ final class DomainService
         );
 
         return [
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
-            'renewal' => [
-                'expirationDate' => $response->expirationDate,
-                'name' => $response->name,
-            ],
+            'expirationDate' => $response->expirationDate,
+            'name' => $response->name,
         ];
     }
 
     /**
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   }
-     * }
+     * @return array{}
      */
     public function delete(string $name): array
     {
@@ -318,14 +244,7 @@ final class DomainService
                 (new DomainDeleteResponseParser())->parse($responseXml, $metadata),
         );
 
-        return [
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
-        ];
+        return [];
     }
 
     /**
@@ -338,21 +257,13 @@ final class DomainService
      * } $request
      *
      * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   transfer: array{
-     *     name: string|null,
-     *     transferStatus: string|null,
-     *     requestClientId: string|null,
-     *     requestDate: string|null,
-     *     actionClientId: string|null,
-     *     actionDate: string|null,
-     *     expirationDate: string|null
-     *   }
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: string|null,
+     *   actionClientId: string|null,
+     *   actionDate: string|null,
+     *   expirationDate: string|null
      * }
      */
     public function transfer(array $request): array
@@ -375,21 +286,13 @@ final class DomainService
         );
 
         return [
-            'metadata' => [
-                'clientTransactionId' => $response->metadata->clientTransactionId,
-                'message' => $response->metadata->message,
-                'resultCode' => $response->metadata->resultCode,
-                'serverTransactionId' => $response->metadata->serverTransactionId,
-            ],
-            'transfer' => [
-                'actionClientId' => $response->actionClientId,
-                'actionDate' => $response->actionDate,
-                'expirationDate' => $response->expirationDate,
-                'name' => $response->name,
-                'requestClientId' => $response->requestClientId,
-                'requestDate' => $response->requestDate,
-                'transferStatus' => $response->transferStatus,
-            ],
+            'actionClientId' => $response->actionClientId,
+            'actionDate' => $response->actionDate,
+            'expirationDate' => $response->expirationDate,
+            'name' => $response->name,
+            'requestClientId' => $response->requestClientId,
+            'requestDate' => $response->requestDate,
+            'transferStatus' => $response->transferStatus,
         ];
     }
 

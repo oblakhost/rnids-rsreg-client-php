@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Session;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
 use RNIDS\Connection\Transport;
 use RNIDS\Session\SessionService;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
@@ -54,12 +54,10 @@ final class SessionServiceTest extends TestCase
         $result = $service->hello();
 
         self::assertStringContainsString('<hello/>', $transport->writtenPayload);
-        self::assertSame('Greeting', $result['metadata']['message']);
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame('RNIDS EPP', $result['greeting']['serverId']);
-        self::assertSame('2026-02-27T00:00:00.0Z', $result['greeting']['serverDate']);
-        self::assertSame([ '1.0' ], $result['greeting']['versions']);
-        self::assertSame([ 'en' ], $result['greeting']['languages']);
+        self::assertSame('RNIDS EPP', $result['serverId']);
+        self::assertSame('2026-02-27T00:00:00.0Z', $result['serverDate']);
+        self::assertSame([ '1.0' ], $result['versions']);
+        self::assertSame([ 'en' ], $result['languages']);
     }
 
     public function testPollReqSendsPollFrameAndMapsQueueData(): void
@@ -109,10 +107,9 @@ final class SessionServiceTest extends TestCase
         $result = $service->poll();
 
         self::assertStringContainsString('<poll op="req"/>', $transport->writtenPayload);
-        self::assertSame(1301, $result['metadata']['resultCode']);
-        self::assertSame(1, $result['queue']['count']);
-        self::assertSame('MSG-1', $result['queue']['messageId']);
-        self::assertSame('2026-02-27T00:00:00.0Z', $result['queue']['queueDate']);
+        self::assertSame(1, $result['count']);
+        self::assertSame('MSG-1', $result['messageId']);
+        self::assertSame('2026-02-27T00:00:00.0Z', $result['queueDate']);
     }
 
     public function testPollAckRequiresMessageId(): void

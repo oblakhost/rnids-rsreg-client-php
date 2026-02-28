@@ -6,6 +6,7 @@ namespace RNIDS\Xml;
 
 use RNIDS\Connection\Transport;
 use RNIDS\Exception\TransportException;
+use RNIDS\Xml\Response\LastResponseMetadata;
 use RNIDS\Xml\Response\ResponseMetadata;
 use RNIDS\Xml\Response\ResponseMetadataParser;
 
@@ -19,6 +20,7 @@ final class CommandExecutor
     public function __construct(
         private readonly Transport $transport,
         ?ResponseMetadataParser $responseMetadataParser = null,
+        private readonly ?LastResponseMetadata $lastResponseMetadata = null,
     ) {
         $this->responseMetadataParser = $responseMetadataParser ?? new ResponseMetadataParser();
     }
@@ -34,6 +36,7 @@ final class CommandExecutor
     {
         $responseXml = $this->sendAndReceive($xml);
         $metadata = $this->responseMetadataParser->parse($responseXml);
+        $this->lastResponseMetadata?->set($metadata);
         ResultCodePolicy::assertSuccess($metadata);
 
         return $responseParser($responseXml, $metadata);

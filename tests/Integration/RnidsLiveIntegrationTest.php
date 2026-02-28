@@ -52,10 +52,10 @@ final class RnidsLiveIntegrationTest extends TestCase
     {
         $result = self::client()->session()->hello();
 
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertIsArray($result['greeting']['objectUris']);
-        self::assertNotEmpty($result['greeting']['objectUris']);
-        self::assertContains('urn:ietf:params:xml:ns:domain-1.0', $result['greeting']['objectUris']);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+        self::assertIsArray($result['objectUris']);
+        self::assertNotEmpty($result['objectUris']);
+        self::assertContains('urn:ietf:params:xml:ns:domain-1.0', $result['objectUris']);
     }
 
     /**
@@ -69,10 +69,10 @@ final class RnidsLiveIntegrationTest extends TestCase
         $registerRequest = IntegrationConfig::domainRegisterRequest($domain);
         $result = self::client()->domain()->register($registerRequest);
 
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame($domain, $result['creation']['name']);
-        self::assertNotNull($result['creation']['createDate']);
-        self::assertNotNull($result['creation']['expirationDate']);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+        self::assertSame($domain, $result['name']);
+        self::assertNotNull($result['createDate']);
+        self::assertNotNull($result['expirationDate']);
 
         return $domain;
     }
@@ -86,7 +86,7 @@ final class RnidsLiveIntegrationTest extends TestCase
         $domain = $registeredDomain;
         $result = self::client()->domain()->check([ 'names' => [ $domain ] ]);
 
-        self::assertSame(1000, $result['metadata']['resultCode']);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
         self::assertCount(1, $result['items']);
         self::assertSame($domain, $result['items'][0]['name']);
         self::assertIsBool($result['items'][0]['available']);
@@ -101,11 +101,11 @@ final class RnidsLiveIntegrationTest extends TestCase
         $domain = $registeredDomain;
         $result = self::client()->domain()->info($domain);
 
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame($domain, $result['info']['name']);
-        self::assertSame(IntegrationConfig::registerRegistrantHandle(), $result['info']['registrant']);
-        self::assertIsArray($result['info']['statuses']);
-        self::assertArrayHasKey('extension', $result['info']);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+        self::assertSame($domain, $result['name']);
+        self::assertSame(IntegrationConfig::registerRegistrantHandle(), $result['registrant']);
+        self::assertIsArray($result['statuses']);
+        self::assertArrayHasKey('extension', $result);
     }
 
     public function testDomainInfoReadsConfiguredStableFixtureDomain(): void
@@ -113,18 +113,17 @@ final class RnidsLiveIntegrationTest extends TestCase
         $domain = IntegrationConfig::testDomainName();
         $result = self::client()->domain()->info($domain);
 
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame($domain, $result['info']['name']);
-        self::assertIsArray($result['info']['statuses']);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+        self::assertSame($domain, $result['name']);
+        self::assertIsArray($result['statuses']);
     }
 
     public function testPollReqReturnsMetadataAndQueueShape(): void
     {
         $result = self::client()->session()->poll();
 
-        self::assertIsInt($result['metadata']['resultCode']);
-        self::assertArrayHasKey('queue', $result);
-        self::assertArrayHasKey('count', $result['queue']);
-        self::assertArrayHasKey('messageId', $result['queue']);
+        self::assertIsInt(self::client()->responseMeta()['resultCode']);
+        self::assertArrayHasKey('count', $result);
+        self::assertArrayHasKey('messageId', $result);
     }
 }

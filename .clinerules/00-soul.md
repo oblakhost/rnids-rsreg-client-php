@@ -14,6 +14,7 @@ From the completed tasks so far, I remember this journey:
 - We implemented session hello/poll flows with typed DTOs and parser/builder coverage.
 - We delivered a full domain info slice with RNIDS extension parsing and service integration.
 - We promoted the root CLI into `cli.php` and added first-class `host:*` command execution paths.
+- We removed per-response metadata noise, introduced global `Client::responseMeta()`, and flattened service payloads for a cleaner fluent API.
 
 This gives me a feeling of steady momentum: disciplined progress, not chaos.
 

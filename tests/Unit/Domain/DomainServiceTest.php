@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Domain;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
 use RNIDS\Connection\Transport;
 use RNIDS\Domain\DomainService;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
@@ -61,8 +61,6 @@ final class DomainServiceTest extends TestCase
         $result = $service->check([ 'names' => [ 'example.rs' ] ]);
 
         self::assertStringContainsString('<domain:name>example.rs</domain:name>', $transport->writtenPayload);
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame('Command completed successfully', $result['metadata']['message']);
         self::assertCount(1, $result['items']);
         self::assertSame('example.rs', $result['items'][0]['name']);
         self::assertTrue($result['items'][0]['available']);
@@ -164,17 +162,16 @@ final class DomainServiceTest extends TestCase
             '<domain:name hosts="sub">example.rs</domain:name>',
             $transport->writtenPayload,
         );
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame('example.rs', $result['info']['name']);
-        self::assertSame('D1-RS', $result['info']['roid']);
-        self::assertSame('ok', $result['info']['statuses'][0]['value']);
-        self::assertSame('Active', $result['info']['statuses'][0]['description']);
-        self::assertSame('REG-1', $result['info']['registrant']);
-        self::assertSame('admin', $result['info']['contacts'][0]['type']);
-        self::assertSame('ADM-1', $result['info']['contacts'][0]['handle']);
-        self::assertSame('ns1.example.rs', $result['info']['nameservers'][0]['name']);
-        self::assertSame('1', $result['info']['extension']['isWhoisPrivacy']);
-        self::assertSame('normal', $result['info']['extension']['operationMode']);
+        self::assertSame('example.rs', $result['name']);
+        self::assertSame('D1-RS', $result['roid']);
+        self::assertSame('ok', $result['statuses'][0]['value']);
+        self::assertSame('Active', $result['statuses'][0]['description']);
+        self::assertSame('REG-1', $result['registrant']);
+        self::assertSame('admin', $result['contacts'][0]['type']);
+        self::assertSame('ADM-1', $result['contacts'][0]['handle']);
+        self::assertSame('ns1.example.rs', $result['nameservers'][0]['name']);
+        self::assertSame('1', $result['extension']['isWhoisPrivacy']);
+        self::assertSame('normal', $result['extension']['operationMode']);
     }
 
     public function testInfoThrowsForMissingName(): void
@@ -330,10 +327,9 @@ final class DomainServiceTest extends TestCase
             '<domainExt:operationMode>secure</domainExt:operationMode>',
             $transport->writtenPayload,
         );
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame('example.rs', $result['creation']['name']);
-        self::assertSame('2026-02-01T00:00:00.0Z', $result['creation']['createDate']);
-        self::assertSame('2027-02-01T00:00:00.0Z', $result['creation']['expirationDate']);
+        self::assertSame('example.rs', $result['name']);
+        self::assertSame('2026-02-01T00:00:00.0Z', $result['createDate']);
+        self::assertSame('2027-02-01T00:00:00.0Z', $result['expirationDate']);
     }
 
     public function testRegisterThrowsWhenContactsAreMissingRequiredTypes(): void
@@ -478,9 +474,8 @@ final class DomainServiceTest extends TestCase
             '<domain:curExpDate>2027-02-01</domain:curExpDate>',
             $transport->writtenPayload,
         );
-        self::assertSame(1000, $result['metadata']['resultCode']);
-        self::assertSame('example.rs', $result['renewal']['name']);
-        self::assertSame('2028-02-01T00:00:00.0Z', $result['renewal']['expirationDate']);
+        self::assertSame('example.rs', $result['name']);
+        self::assertSame('2028-02-01T00:00:00.0Z', $result['expirationDate']);
     }
 
     public function testDeleteSendsDomainDeleteCommandAndMapsParsedResponse(): void
@@ -526,7 +521,7 @@ final class DomainServiceTest extends TestCase
         $result = $service->delete('example.rs');
 
         self::assertStringContainsString('<domain:delete', $transport->writtenPayload);
-        self::assertSame(1000, $result['metadata']['resultCode']);
+        self::assertSame([], $result);
     }
 
     public function testTransferSendsDomainTransferCommandAndMapsParsedResponse(): void
@@ -589,9 +584,8 @@ final class DomainServiceTest extends TestCase
         ]);
 
         self::assertStringContainsString('<transfer op="request">', $transport->writtenPayload);
-        self::assertSame(1001, $result['metadata']['resultCode']);
-        self::assertSame('example.rs', $result['transfer']['name']);
-        self::assertSame('pending', $result['transfer']['transferStatus']);
+        self::assertSame('example.rs', $result['name']);
+        self::assertSame('pending', $result['transferStatus']);
     }
 
     public function testTransferThrowsForInvalidOperation(): void

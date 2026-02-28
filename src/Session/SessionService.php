@@ -10,6 +10,7 @@ use RNIDS\Session\Dto\PollRequest;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 use RNIDS\Xml\ClTrid\IncrementalClTridGenerator;
 use RNIDS\Xml\CommandExecutor;
+use RNIDS\Xml\Response\LastResponseMetadata;
 use RNIDS\Xml\Session\HelloRequestBuilder;
 use RNIDS\Xml\Session\HelloResponseParser;
 use RNIDS\Xml\Session\LoginRequestBuilder;
@@ -33,8 +34,9 @@ final class SessionService
         Transport $transport,
         ?CommandExecutor $executor = null,
         ?ClTridGenerator $tridGenerator = null,
+        ?LastResponseMetadata $lastResponseMetadata = null,
     ) {
-        $this->executor = $executor ?? new CommandExecutor($transport);
+        $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('SESSION');
     }
 
@@ -48,14 +50,7 @@ final class SessionService
      *   extensionUris?: list<non-empty-string>
      * } $request
      *
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   }
-     * }
+     * @return array{}
      */
     public function login(array $request): array
     {
@@ -71,33 +66,23 @@ final class SessionService
             $this->tridGenerator->nextId(),
         );
 
-        $response = $this->executor->execute(
+        $this->executor->execute(
             $xml,
             static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
                 (new LoginResponseParser())->parse($responseXml, $metadata),
         );
 
-        return [
-            'metadata' => $this->metadataToArray($response->metadata),
-        ];
+        return [];
     }
 
     /**
      * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   greeting: array{
-     *     extensionUris: list<string>,
-     *     languages: list<string>,
-     *     objectUris: list<string>,
-     *     serverDate: string|null,
-     *     serverId: string|null,
-     *     versions: list<string>
-     *   }
+     *   extensionUris: list<string>,
+     *   languages: list<string>,
+     *   objectUris: list<string>,
+     *   serverDate: string|null,
+     *   serverId: string|null,
+     *   versions: list<string>
      * }
      */
     public function hello(): array
@@ -109,59 +94,39 @@ final class SessionService
         );
 
         return [
-            'greeting' => [
-                'extensionUris' => $response->extensionUris,
-                'languages' => $response->languages,
-                'objectUris' => $response->objectUris,
-                'serverDate' => $response->serverDate,
-                'serverId' => $response->serverId,
-                'versions' => $response->versions,
-            ],
-            'metadata' => $this->metadataToArray($response->metadata),
+            'extensionUris' => $response->extensionUris,
+            'languages' => $response->languages,
+            'objectUris' => $response->objectUris,
+            'serverDate' => $response->serverDate,
+            'serverId' => $response->serverId,
+            'versions' => $response->versions,
         ];
     }
 
     /**
-     * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   }
-     * }
+     * @return array{}
      */
     public function logout(): array
     {
         $xml = (new LogoutRequestBuilder())->build($this->tridGenerator->nextId());
 
-        $response = $this->executor->execute(
+        $this->executor->execute(
             $xml,
             static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
                 (new LogoutResponseParser())->parse($responseXml, $metadata),
         );
 
-        return [
-            'metadata' => $this->metadataToArray($response->metadata),
-        ];
+        return [];
     }
 
     /**
      * @param array{messageId?: mixed, operation?: mixed} $request
      *
      * @return array{
-     *   metadata: array{
-     *     clientTransactionId: string|null,
-     *     message: string,
-     *     resultCode: int,
-     *     serverTransactionId: string|null
-     *   },
-     *   queue: array{
-     *     count: int|null,
-     *     message: string|null,
-     *     messageId: string|null,
-     *     queueDate: string|null
-     *   }
+     *   count: int|null,
+     *   message: string|null,
+     *   messageId: string|null,
+     *   queueDate: string|null
      * }
      */
     public function poll(array $request = []): array
@@ -176,13 +141,10 @@ final class SessionService
         );
 
         return [
-            'metadata' => $this->metadataToArray($response->metadata),
-            'queue' => [
-                'count' => $response->queueCount,
-                'message' => $response->message,
-                'messageId' => $response->messageId,
-                'queueDate' => $response->queueDate,
-            ],
+            'count' => $response->queueCount,
+            'message' => $response->message,
+            'messageId' => $response->messageId,
+            'queueDate' => $response->queueDate,
         ];
     }
 
@@ -304,23 +266,5 @@ final class SessionService
         }
 
         return $operation;
-    }
-
-    /**
-     * @return array{
-     *   clientTransactionId: string|null,
-     *   message: string,
-     *   resultCode: int,
-     *   serverTransactionId: string|null
-     * }
-     */
-    private function metadataToArray(\RNIDS\Xml\Response\ResponseMetadata $metadata): array
-    {
-        return [
-            'clientTransactionId' => $metadata->clientTransactionId,
-            'message' => $metadata->message,
-            'resultCode' => $metadata->resultCode,
-            'serverTransactionId' => $metadata->serverTransactionId,
-        ];
     }
 }

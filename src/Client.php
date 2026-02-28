@@ -8,8 +8,10 @@ use RNIDS\Connection\ConnectionConfig;
 use RNIDS\Connection\TlsConfig;
 use RNIDS\Connection\Transport;
 use RNIDS\Domain\DomainService;
+use RNIDS\Host\HostService;
 use RNIDS\Session\SessionService;
 use RNIDS\Xml\NamespaceRegistry;
+use RNIDS\Xml\Response\LastResponseMetadata;
 
 final class Client
 {
@@ -18,6 +20,10 @@ final class Client
     private SessionService $sessionService;
 
     private DomainService $domainService;
+
+    private HostService $hostService;
+
+    private LastResponseMetadata $lastResponseMetadata;
 
     private bool $loggedIn = false;
 
@@ -128,8 +134,16 @@ final class Client
             ->withTlsConfig($this->buildTlsConfig($config))
             ->buildTransport();
 
-        $this->sessionService = new SessionService($this->transport);
-        $this->domainService = new DomainService($this->transport);
+        $this->lastResponseMetadata = new LastResponseMetadata();
+        $this->sessionService = new SessionService($this->transport, null, null, $this->lastResponseMetadata);
+        $this->domainService = new DomainService(
+            $this->transport,
+            null,
+            null,
+            null,
+            $this->lastResponseMetadata,
+        );
+        $this->hostService = new HostService($this->transport, null, null, null, $this->lastResponseMetadata);
         $this->transport->connect();
         $this->sessionService->hello();
         $this->sessionService->login([
@@ -210,6 +224,40 @@ final class Client
     public function domain(): DomainService
     {
         return $this->domainService;
+    }
+
+    /**
+     * Returns the fluent host (nameserver) service.
+     */
+    public function host(): HostService
+    {
+        return $this->hostService;
+    }
+
+    /**
+     * Returns metadata for the latest parsed EPP response, when available.
+     *
+     * @return array{
+     *   clientTransactionId: string|null,
+     *   message: string,
+     *   resultCode: int,
+     *   serverTransactionId: string|null
+     * }|null
+     */
+    public function responseMeta(): ?array
+    {
+        $metadata = $this->lastResponseMetadata->get();
+
+        if (null === $metadata) {
+            return null;
+        }
+
+        return [
+            'clientTransactionId' => $metadata->clientTransactionId,
+            'message' => $metadata->message,
+            'resultCode' => $metadata->resultCode,
+            'serverTransactionId' => $metadata->serverTransactionId,
+        ];
     }
 
     /**
