@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Domain\Dto\DomainDeleteRequest;
 use RNIDS\Xml\Domain\DomainDeleteRequestBuilder;
 
+#[Group('unit')]
 final class DomainDeleteRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainDeleteXml(): void

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Response;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Response\EppResultCode;
 
 /**
  * Unit tests for EPP result code enum conversion.
  */
+#[Group('unit')]
 final class EppResultCodeTest extends TestCase
 {
     /**

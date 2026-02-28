@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Domain\DomainRegisterResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
+#[Group('unit')]
 final class DomainRegisterResponseParserTest extends TestCase
 {
     public function testParseMapsDomainCreateData(): void

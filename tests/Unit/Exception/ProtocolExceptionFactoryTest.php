@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Exception;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Exception\AuthenticationFailure;
 use RNIDS\Exception\ObjectMissing;
 use RNIDS\Exception\ProtocolException;
@@ -14,6 +15,7 @@ use RNIDS\Xml\Response\ResponseMetadata;
 /**
  * Unit tests for mapping response codes to protocol exceptions.
  */
+#[Group('unit')]
 final class ProtocolExceptionFactoryTest extends TestCase
 {
     /**

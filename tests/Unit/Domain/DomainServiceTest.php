@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Connection\Transport;
 use RNIDS\Domain\DomainService;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 
+#[Group('unit')]
 final class DomainServiceTest extends TestCase
 {
     public function testCheckSendsDomainCheckCommandAndMapsParsedResponse(): void
@@ -156,10 +158,7 @@ final class DomainServiceTest extends TestCase
         };
 
         $service = new DomainService($transport, null, $generator);
-        $result = $service->info([
-            'hosts' => 'sub',
-            'name' => 'example.rs',
-        ]);
+        $result = $service->info('example.rs', 'sub');
 
         self::assertStringContainsString(
             '<domain:name hosts="sub">example.rs</domain:name>',
@@ -205,9 +204,9 @@ final class DomainServiceTest extends TestCase
         $service = new DomainService($transport);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Domain info request key "name" must be a non-empty string.');
+        $this->expectExceptionMessage('Domain name must be a non-empty string.');
 
-        $service->info([]);
+        $service->info('');
     }
 
     public function testInfoThrowsForInvalidHostsParameter(): void
@@ -241,10 +240,7 @@ final class DomainServiceTest extends TestCase
             'Domain info request key "hosts" must be one of "all", "del", "sub", or "none".',
         );
 
-        $service->info([
-            'hosts' => 'invalid',
-            'name' => 'example.rs',
-        ]);
+        $service->info('example.rs', 'invalid');
     }
 
     public function testRegisterSendsDomainCreateCommandAndMapsParsedResponse(): void
@@ -527,7 +523,7 @@ final class DomainServiceTest extends TestCase
         };
 
         $service = new DomainService($transport, null, $generator);
-        $result = $service->delete([ 'name' => 'example.rs' ]);
+        $result = $service->delete('example.rs');
 
         self::assertStringContainsString('<domain:delete', $transport->writtenPayload);
         self::assertSame(1000, $result['metadata']['resultCode']);

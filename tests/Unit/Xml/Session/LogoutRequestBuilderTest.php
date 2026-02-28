@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Session;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Session\LogoutRequestBuilder;
 
 /**
  * Unit tests for logout request XML generation.
  */
+#[Group('unit')]
 final class LogoutRequestBuilderTest extends TestCase
 {
     /**

@@ -10,7 +10,7 @@ final class NamespaceRegistry
     public const DOMAIN = 'urn:ietf:params:xml:ns:domain-1.0';
     public const CONTACT = 'urn:ietf:params:xml:ns:contact-1.0';
     public const HOST = 'urn:ietf:params:xml:ns:host-1.0';
-    public const RNIDS = 'http://www.rnids.rs/rnids-epp/rnids-1.0';
+    public const RNIDS = 'http://www.rnids.rs/epp/xml/rnids-1.0';
     public const RNIDS_DOMAIN_EXT = 'http://www.rnids.rs/epp/xml/domain-rnids-ext-1.0';
     public const RNIDS_CONTACT_EXT = 'http://www.rnids.rs/epp/xml/contact-rnids-ext-1.0';
 

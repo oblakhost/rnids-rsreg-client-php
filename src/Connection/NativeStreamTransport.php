@@ -33,7 +33,9 @@ final class NativeStreamTransport implements Transport
             return;
         }
 
-        $scheme = null !== $this->tlsConfig ? 'tls' : 'tcp';
+        $this->assertTlsFilesAreReadable();
+
+        $scheme = null !== $this->tlsConfig ? 'ssl' : 'tcp';
         $target = \sprintf(
             '%s://%s:%d',
             $scheme,
@@ -45,18 +47,40 @@ final class NativeStreamTransport implements Transport
         $errorCode = 0;
         $errorMessage = '';
 
-        $connection = @\stream_socket_client(
-            $target,
-            $errorCode,
-            $errorMessage,
-            $this->connectionConfig->connectTimeoutSeconds,
-            \STREAM_CLIENT_CONNECT,
-            $context,
+        $warnings = [];
+
+        \set_error_handler(
+            static function (int $severity, string $message) use (&$warnings): bool {
+                $warnings[] = $message;
+
+                return true;
+            },
         );
 
+        try {
+            $connection = \stream_socket_client(
+                $target,
+                $errorCode,
+                $errorMessage,
+                $this->connectionConfig->connectTimeoutSeconds,
+                \STREAM_CLIENT_CONNECT,
+                $context,
+            );
+        } finally {
+            \restore_error_handler();
+        }
+
         if (false === $connection) {
+            $details = $this->buildConnectionFailureDetails($warnings);
+
             throw new \RuntimeException(
-                \sprintf('Failed to connect to %s: %s (code %d)', $target, $errorMessage, $errorCode),
+                \sprintf(
+                    'Failed to connect to %s: %s (code %d)%s',
+                    $target,
+                    $errorMessage,
+                    $errorCode,
+                    $details,
+                ),
             );
         }
 
@@ -118,6 +142,12 @@ final class NativeStreamTransport implements Transport
             throw new \RuntimeException('Invalid EPP payload length (negative value).');
         }
 
+        if ($payloadLength > 1000000) {
+            throw new \RuntimeException(
+                \sprintf('Packet size is too big: %d. Closing connection.', $payloadLength),
+            );
+        }
+
         return $this->readExactBytes($connection, $payloadLength);
     }
 
@@ -159,6 +189,8 @@ final class NativeStreamTransport implements Transport
         if (true === \stream_get_meta_data($connection)['timed_out']) {
             throw new \RuntimeException('Timed out while reading EPP frame.');
         }
+
+        \usleep(100);
     }
 
     /**
@@ -199,12 +231,63 @@ final class NativeStreamTransport implements Transport
             \stream_context_set_option($context, 'ssl', 'cafile', $this->tlsConfig->caFilePath);
         }
 
-        if (null !== $this->tlsConfig->peerName) {
-            \stream_context_set_option($context, 'ssl', 'peer_name', $this->tlsConfig->peerName);
+        if (null !== $this->tlsConfig->verifyPeer) {
+            \stream_context_set_option($context, 'ssl', 'verify_peer', $this->tlsConfig->verifyPeer);
         }
+
+        if (null !== $this->tlsConfig->verifyPeerName) {
+            \stream_context_set_option($context, 'ssl', 'verify_peer_name', $this->tlsConfig->verifyPeerName);
+        }
+
+        $peerName = $this->tlsConfig->peerName ?? $this->connectionConfig->hostname;
+        \stream_context_set_option($context, 'ssl', 'peer_name', $peerName);
 
         \stream_context_set_option($context, 'ssl', 'allow_self_signed', $this->tlsConfig->allowSelfSigned);
 
         return $context;
+    }
+
+    private function assertTlsFilesAreReadable(): void
+    {
+        if (null === $this->tlsConfig) {
+            return;
+        }
+
+        $this->assertReadableFile($this->tlsConfig->clientCertificatePath, 'TLS client certificate file');
+
+        if (null === $this->tlsConfig->caFilePath) {
+            return;
+        }
+
+        $this->assertReadableFile($this->tlsConfig->caFilePath, 'TLS CA certificate file');
+    }
+
+    private function assertReadableFile(string $path, string $label): void
+    {
+        if ('' === \trim($path) || !\is_file($path) || !\is_readable($path)) {
+            throw new \RuntimeException(\sprintf('%s is not readable: "%s".', $label, $path));
+        }
+    }
+
+    /**
+     * @param list<string> $warnings
+     */
+    private function buildConnectionFailureDetails(array $warnings): string
+    {
+        $details = [];
+
+        foreach ($warnings as $warning) {
+            $details[] = \sprintf('warning: %s', $warning);
+        }
+
+        while (false !== ($opensslError = \openssl_error_string())) {
+            $details[] = \sprintf('openssl: %s', $opensslError);
+        }
+
+        if ([] === $details) {
+            return '';
+        }
+
+        return ' Details: ' . \implode(' | ', $details);
     }
 }

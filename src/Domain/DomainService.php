@@ -98,8 +98,6 @@ final class DomainService
     }
 
     /**
-     * @param array{name?: mixed, hosts?: mixed} $request
-     *
      * @return array{
      *   metadata: array{
      *     clientTransactionId: string|null,
@@ -130,12 +128,12 @@ final class DomainService
      *   }
      * }
      */
-    public function info(array $request): array
+    public function info(string $name, ?string $hosts = null): array
     {
         $xml = (new DomainInfoRequestBuilder())->build(
             new DomainInfoRequest(
-                $this->requireName($request),
-                $this->optionalHosts($request),
+                $this->requireDomainName($name),
+                $this->optionalHosts($hosts),
             ),
             $this->tridGenerator->nextId(),
         );
@@ -298,8 +296,6 @@ final class DomainService
     }
 
     /**
-     * @param array{name?: mixed} $request
-     *
      * @return array{
      *   metadata: array{
      *     clientTransactionId: string|null,
@@ -309,10 +305,10 @@ final class DomainService
      *   }
      * }
      */
-    public function delete(array $request): array
+    public function delete(string $name): array
     {
         $xml = (new DomainDeleteRequestBuilder())->build(
-            new DomainDeleteRequest($this->requireName($request)),
+            new DomainDeleteRequest($this->requireDomainName($name)),
             $this->tridGenerator->nextId(),
         );
 
@@ -431,32 +427,35 @@ final class DomainService
         return $name;
     }
 
-    /**
-     * @param array{hosts?: mixed} $request
-     */
-    private function optionalHosts(array $request): string
+    private function optionalHosts(?string $hosts): string
     {
-        $hosts = $request['hosts'] ?? DomainInfoRequest::HOSTS_ALL;
+        if (null === $hosts) {
+            return DomainInfoRequest::HOSTS_ALL;
+        }
 
-        if (
-            !\is_string($hosts)
-            || !\in_array(
-                $hosts,
-                [
-                    DomainInfoRequest::HOSTS_ALL,
-                    DomainInfoRequest::HOSTS_DELEGATED,
-                    DomainInfoRequest::HOSTS_SUBORDINATE,
-                    DomainInfoRequest::HOSTS_NONE,
-                ],
-                true,
-            )
-        ) {
+        $allowedHosts = [
+            DomainInfoRequest::HOSTS_ALL,
+            DomainInfoRequest::HOSTS_DELEGATED,
+            DomainInfoRequest::HOSTS_SUBORDINATE,
+            DomainInfoRequest::HOSTS_NONE,
+        ];
+
+        if (!\in_array($hosts, $allowedHosts, true)) {
             throw new \InvalidArgumentException(
                 'Domain info request key "hosts" must be one of "all", "del", "sub", or "none".',
             );
         }
 
         return $hosts;
+    }
+
+    private function requireDomainName(string $name): string
+    {
+        if ('' === \trim($name)) {
+            throw new \InvalidArgumentException('Domain name must be a non-empty string.');
+        }
+
+        return $name;
     }
 
     private function assertNamesList(mixed $names): void

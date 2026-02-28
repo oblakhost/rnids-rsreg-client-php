@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Session;
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Session\Dto\LoginRequest;
 use RNIDS\Xml\Session\LoginRequestBuilder;
@@ -11,6 +12,7 @@ use RNIDS\Xml\Session\LoginRequestBuilder;
 /**
  * Unit tests for login request XML generation.
  */
+#[Group('unit')]
 final class LoginRequestBuilderTest extends TestCase
 {
     /**
@@ -27,7 +29,7 @@ final class LoginRequestBuilderTest extends TestCase
                 version: '1.0',
                 language: 'en',
                 objectUris: [ 'urn:ietf:params:xml:ns:domain-1.0' ],
-                extensionUris: [ 'http://www.rnids.rs/rnids-epp/rnids-1.0' ],
+                extensionUris: [ 'http://www.rnids.rs/epp/xml/rnids-1.0' ],
             ),
             'TRID<&>',
         );
@@ -38,7 +40,7 @@ final class LoginRequestBuilderTest extends TestCase
         self::assertStringContainsString('<clID>client&lt;&amp;&gt;</clID>', $xml);
         self::assertStringContainsString('<pw>pass&lt;&amp;&gt;</pw>', $xml);
         self::assertStringContainsString('<objURI>urn:ietf:params:xml:ns:domain-1.0</objURI>', $xml);
-        self::assertStringContainsString('<extURI>http://www.rnids.rs/rnids-epp/rnids-1.0</extURI>', $xml);
+        self::assertStringContainsString('<extURI>http://www.rnids.rs/epp/xml/rnids-1.0</extURI>', $xml);
         self::assertStringContainsString('<clTRID>TRID&lt;&amp;&gt;</clTRID>', $xml);
         self::assertStringContainsString('</command></epp>', $xml);
     }

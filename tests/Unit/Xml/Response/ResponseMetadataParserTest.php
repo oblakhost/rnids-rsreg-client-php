@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Response;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Exception\MalformedResponseException;
 use RNIDS\Xml\Response\ResponseMetadataParser;
 
 /**
  * Unit tests for extracting response metadata from EPP XML.
  */
+#[Group('unit')]
 final class ResponseMetadataParserTest extends TestCase
 {
     /**

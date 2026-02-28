@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Session;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Response\ResponseMetadata;
 use RNIDS\Xml\Session\PollResponseParser;
 
+#[Group('unit')]
 final class PollResponseParserTest extends TestCase
 {
     public function testParseMapsQueueDataFromPollResponse(): void

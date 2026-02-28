@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Domain\Dto\DomainCheckRequest;
 use RNIDS\Xml\Domain\DomainCheckRequestBuilder;
 
+#[Group('unit')]
 final class DomainCheckRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainCheckXml(): void

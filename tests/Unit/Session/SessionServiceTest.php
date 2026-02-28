@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Tests\Unit\Session;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Connection\Transport;
 use RNIDS\Session\SessionService;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 
+#[Group('unit')]
 final class SessionServiceTest extends TestCase
 {
     public function testHelloSendsHelloFrameAndMapsGreetingData(): void

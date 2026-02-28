@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Domain\Dto\DomainRenewRequest;
 use RNIDS\Xml\Domain\DomainRenewRequestBuilder;
 
+#[Group('unit')]
 final class DomainRenewRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainRenewXml(): void

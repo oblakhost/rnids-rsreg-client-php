@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Session;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Session\HelloRequestBuilder;
 
+#[Group('unit')]
 final class HelloRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicHelloEnvelope(): void

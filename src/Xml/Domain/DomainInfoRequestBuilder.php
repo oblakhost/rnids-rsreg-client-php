@@ -18,14 +18,25 @@ final class DomainInfoRequestBuilder
      */
     public function build(DomainInfoRequest $request, string $clTrid): string
     {
+        $hostsAttribute = $this->hostsAttribute($request);
+
         $xml = '<info>'
             . '<domain:info xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . '<domain:name hosts="' . XmlComposer::escape($request->hosts) . '">'
+            . '<domain:name' . $hostsAttribute . '>'
             . XmlComposer::escape($request->name)
             . '</domain:name>'
             . '</domain:info>'
             . '</info>';
 
         return XmlComposer::commandEnvelope($xml, $clTrid);
+    }
+
+    private function hostsAttribute(DomainInfoRequest $request): string
+    {
+        if (DomainInfoRequest::HOSTS_ALL === $request->hosts) {
+            return '';
+        }
+
+        return ' hosts="' . XmlComposer::escape($request->hosts) . '"';
     }
 }

@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Tests\Unit\Connection;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Connection\EppFrameCodec;
 
 /**
  * Unit tests for EPP frame prefix encoding and decoding.
  */
+#[Group('unit')]
 final class EppFrameCodecTest extends TestCase
 {
     /**

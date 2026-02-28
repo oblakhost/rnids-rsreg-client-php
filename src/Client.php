@@ -131,14 +131,14 @@ final class Client
         $this->sessionService = new SessionService($this->transport);
         $this->domainService = new DomainService($this->transport);
         $this->transport->connect();
+        $this->sessionService->hello();
         $this->sessionService->login([
             'clientId' => self::requireString($config, 'username'),
             'extensionUris' => self::optionalStringList(
                 $config,
                 'extensionUris',
                 [
-                    NamespaceRegistry::RNIDS_DOMAIN_EXT,
-                    NamespaceRegistry::RNIDS_CONTACT_EXT,
+                    NamespaceRegistry::RNIDS,
                 ],
             ),
             'language' => self::optionalString($config, 'language', 'en'),
@@ -231,12 +231,34 @@ final class Client
 
         return new TlsConfig(
             $certPath,
-            isset($tls['clientCertificatePassword']) && \is_string($tls['clientCertificatePassword'])
-                ? $tls['clientCertificatePassword']
-                : null,
-            isset($tls['caFilePath']) && \is_string($tls['caFilePath']) ? $tls['caFilePath'] : null,
-            isset($tls['peerName']) && \is_string($tls['peerName']) ? $tls['peerName'] : null,
-            isset($tls['allowSelfSigned']) ? (bool) $tls['allowSelfSigned'] : false,
+            $this->tlsOptionalString($tls, 'clientCertificatePassword'),
+            $this->tlsOptionalString($tls, 'caFilePath'),
+            $this->tlsOptionalString($tls, 'peerName'),
+            $this->tlsOptionalBool($tls, 'allowSelfSigned') ?? false,
+            $this->tlsOptionalBool($tls, 'verifyPeer'),
+            $this->tlsOptionalBool($tls, 'verifyPeerName'),
         );
+    }
+
+    /**
+     * @param array<string, mixed> $tls
+     */
+    private function tlsOptionalString(array $tls, string $key): ?string
+    {
+        $value = $tls[$key] ?? null;
+
+        return \is_string($value) ? $value : null;
+    }
+
+    /**
+     * @param array<string, mixed> $tls
+     */
+    private function tlsOptionalBool(array $tls, string $key): ?bool
+    {
+        if (!\array_key_exists($key, $tls)) {
+            return null;
+        }
+
+        return (bool) $tls[$key];
     }
 }

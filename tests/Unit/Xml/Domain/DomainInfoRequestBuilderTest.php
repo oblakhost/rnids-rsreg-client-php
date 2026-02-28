@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Domain;
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Domain\Dto\DomainInfoRequest;
 use RNIDS\Xml\Domain\DomainInfoRequestBuilder;
 
+#[Group('unit')]
 final class DomainInfoRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainInfoXml(): void
@@ -30,5 +32,18 @@ final class DomainInfoRequestBuilderTest extends TestCase
             $xml,
         );
         self::assertStringContainsString('<clTRID>TRID&lt;&amp;&gt;</clTRID>', $xml);
+    }
+
+    public function testBuildOmitsHostsAttributeWhenUsingDefaultAllMode(): void
+    {
+        $builder = new DomainInfoRequestBuilder();
+
+        $xml = $builder->build(
+            new DomainInfoRequest('komodarstvo.rs', DomainInfoRequest::HOSTS_ALL),
+            'TRID-DEFAULT',
+        );
+
+        self::assertStringContainsString('<domain:name>komodarstvo.rs</domain:name>', $xml);
+        self::assertStringNotContainsString('<domain:name hosts="all">', $xml);
     }
 }

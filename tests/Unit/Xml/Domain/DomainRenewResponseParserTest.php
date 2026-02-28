@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Domain\DomainRenewResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
+#[Group('unit')]
 final class DomainRenewResponseParserTest extends TestCase
 {
     public function testParseMapsDomainRenewData(): void

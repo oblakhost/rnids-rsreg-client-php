@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Xml\Domain\DomainCheckResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
+#[Group('unit')]
 final class DomainCheckResponseParserTest extends TestCase
 {
     public function testParseMapsDomainCheckItemsWithAvailabilityAndReason(): void

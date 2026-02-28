@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Domain\Dto\DomainTransferRequest;
 use RNIDS\Xml\Domain\DomainTransferRequestBuilder;
 
+#[Group('unit')]
 final class DomainTransferRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainTransferXml(): void

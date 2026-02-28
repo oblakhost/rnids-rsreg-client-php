@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Session;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Session\Dto\PollRequest;
 use RNIDS\Xml\Session\PollRequestBuilder;
 
+#[Group('unit')]
 final class PollRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesPollRequestXmlForReqOperation(): void

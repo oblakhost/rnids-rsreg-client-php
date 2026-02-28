@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use RNIDS\Domain\Dto\DomainRegisterContact;
 use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRegisterRequest;
 use RNIDS\Xml\Domain\DomainRegisterRequestBuilder;
 
+#[Group('unit')]
 final class DomainRegisterRequestBuilderTest extends TestCase
 {
     public function testBuildCreatesDeterministicDomainRegisterXml(): void
