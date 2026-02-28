@@ -13,6 +13,9 @@ use RNIDS\Xml\XmlComposer;
  */
 final class HostCheckRequestBuilder
 {
+    /**
+     * Builds an EPP host check command XML payload.
+     */
     public function build(HostCheckRequest $request, string $clTrid): string
     {
         $namesXml = \implode(

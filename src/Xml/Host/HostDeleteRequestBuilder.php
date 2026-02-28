@@ -13,6 +13,9 @@ use RNIDS\Xml\XmlComposer;
  */
 final class HostDeleteRequestBuilder
 {
+    /**
+     * Builds an EPP host delete command XML payload.
+     */
     public function build(HostDeleteRequest $request, string $clTrid): string
     {
         $xml = '<delete>'

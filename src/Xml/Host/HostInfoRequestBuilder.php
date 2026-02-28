@@ -13,6 +13,9 @@ use RNIDS\Xml\XmlComposer;
  */
 final class HostInfoRequestBuilder
 {
+    /**
+     * Builds an EPP host info command XML payload.
+     */
     public function build(HostInfoRequest $request, string $clTrid): string
     {
         $xml = '<info>'

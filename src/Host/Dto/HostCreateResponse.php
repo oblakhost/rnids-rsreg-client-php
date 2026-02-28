@@ -8,6 +8,9 @@ use RNIDS\Xml\Response\ResponseMetadata;
 
 final class HostCreateResponse
 {
+    /**
+     * Creates a host create response DTO.
+     */
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?string $name,

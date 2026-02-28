@@ -14,6 +14,9 @@ use RNIDS\Xml\XmlComposer;
  */
 final class HostCreateRequestBuilder
 {
+    /**
+     * Builds an EPP host create command XML payload.
+     */
     public function build(HostCreateRequest $request, string $clTrid): string
     {
         $xml = '<create>'

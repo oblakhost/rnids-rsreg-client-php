@@ -12,6 +12,9 @@ use RNIDS\Xml\Response\ResponseMetadata;
  */
 final class HostDeleteResponseParser
 {
+    /**
+     * Parses an EPP host delete response XML payload.
+     */
     public function parse(string $xml, ResponseMetadata $metadata): HostDeleteResponse
     {
         return new HostDeleteResponse($metadata);

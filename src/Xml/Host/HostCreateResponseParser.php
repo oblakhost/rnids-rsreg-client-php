@@ -13,6 +13,9 @@ use RNIDS\Xml\Response\ResponseMetadata;
  */
 final class HostCreateResponseParser
 {
+    /**
+     * Parses an EPP host create response XML payload.
+     */
     public function parse(string $xml, ResponseMetadata $metadata): HostCreateResponse
     {
         $xpath = XmlParser::createXPath($xml);

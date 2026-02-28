@@ -6,6 +6,9 @@ namespace RNIDS\Host\Dto;
 
 final class HostUpdateRequest
 {
+    /**
+     * Creates a host update request DTO.
+     */
     public function __construct(
         public readonly string $name,
         public readonly ?HostUpdateSection $add,

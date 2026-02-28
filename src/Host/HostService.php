@@ -33,6 +33,9 @@ final class HostService
 
     private HostRequestFactory $requestFactory;
 
+    /**
+     * Creates a host service with optional test doubles for execution and DTO mapping.
+     */
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,

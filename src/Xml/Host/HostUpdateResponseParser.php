@@ -12,6 +12,9 @@ use RNIDS\Xml\Response\ResponseMetadata;
  */
 final class HostUpdateResponseParser
 {
+    /**
+     * Parses an EPP host update response XML payload.
+     */
     public function parse(string $xml, ResponseMetadata $metadata): HostUpdateResponse
     {
         return new HostUpdateResponse($metadata);

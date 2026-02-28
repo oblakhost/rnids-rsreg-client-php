@@ -15,6 +15,9 @@ use RNIDS\Xml\XmlComposer;
  */
 final class HostUpdateRequestBuilder
 {
+    /**
+     * Builds an EPP host update command XML payload.
+     */
     public function build(HostUpdateRequest $request, string $clTrid): string
     {
         $xml = '<update>'

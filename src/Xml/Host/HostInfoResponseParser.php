@@ -15,6 +15,9 @@ use RNIDS\Xml\Response\ResponseMetadata;
  */
 final class HostInfoResponseParser
 {
+    /**
+     * Parses an EPP host info response XML payload.
+     */
     public function parse(string $xml, ResponseMetadata $metadata): HostInfoResponse
     {
         $xpath = XmlParser::createXPath($xml);
