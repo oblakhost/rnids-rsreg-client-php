@@ -6,16 +6,25 @@ namespace RNIDS\Domain;
 
 use RNIDS\Connection\Transport;
 use RNIDS\Domain\Dto\DomainCheckRequest;
+use RNIDS\Domain\Dto\DomainDeleteRequest;
 use RNIDS\Domain\Dto\DomainInfoRequest;
+use RNIDS\Domain\Dto\DomainRenewRequest;
+use RNIDS\Domain\Dto\DomainTransferRequest;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 use RNIDS\Xml\ClTrid\IncrementalClTridGenerator;
 use RNIDS\Xml\CommandExecutor;
 use RNIDS\Xml\Domain\DomainCheckRequestBuilder;
 use RNIDS\Xml\Domain\DomainCheckResponseParser;
+use RNIDS\Xml\Domain\DomainDeleteRequestBuilder;
+use RNIDS\Xml\Domain\DomainDeleteResponseParser;
 use RNIDS\Xml\Domain\DomainInfoRequestBuilder;
 use RNIDS\Xml\Domain\DomainInfoResponseParser;
 use RNIDS\Xml\Domain\DomainRegisterRequestBuilder;
 use RNIDS\Xml\Domain\DomainRegisterResponseParser;
+use RNIDS\Xml\Domain\DomainRenewRequestBuilder;
+use RNIDS\Xml\Domain\DomainRenewResponseParser;
+use RNIDS\Xml\Domain\DomainTransferRequestBuilder;
+use RNIDS\Xml\Domain\DomainTransferResponseParser;
 
 /**
  * Provides domain command operations for check, info, and register flows.
@@ -28,6 +37,11 @@ final class DomainService
 
     private DomainRegisterRequestFactory $registerRequestFactory;
 
+    /**
+     * @param CommandExecutor|null $executor Optional command executor override for tests.
+     * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
+     * @param DomainRegisterRequestFactory|null $registerRequestFactory Optional request factory override.
+     */
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
@@ -236,6 +250,154 @@ final class DomainService
     }
 
     /**
+     * @param array{name?: mixed, currentExpirationDate?: mixed, period?: mixed, periodUnit?: mixed} $request
+     *
+     * @return array{
+     *   metadata: array{
+     *     clientTransactionId: string|null,
+     *     message: string,
+     *     resultCode: int,
+     *     serverTransactionId: string|null
+     *   },
+     *   renewal: array{
+     *     name: string|null,
+     *     expirationDate: string|null
+     *   }
+     * }
+     */
+    public function renew(array $request): array
+    {
+        $xml = (new DomainRenewRequestBuilder())->build(
+            new DomainRenewRequest(
+                $this->requireName($request),
+                $this->requireCurrentExpirationDate($request),
+                $this->optionalPositiveInt($request, 'period'),
+                $this->optionalPeriodUnit($request),
+            ),
+            $this->tridGenerator->nextId(),
+        );
+
+        $response = $this->executor->execute(
+            $xml,
+            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                (new DomainRenewResponseParser())->parse($responseXml, $metadata),
+        );
+
+        return [
+            'metadata' => [
+                'clientTransactionId' => $response->metadata->clientTransactionId,
+                'message' => $response->metadata->message,
+                'resultCode' => $response->metadata->resultCode,
+                'serverTransactionId' => $response->metadata->serverTransactionId,
+            ],
+            'renewal' => [
+                'expirationDate' => $response->expirationDate,
+                'name' => $response->name,
+            ],
+        ];
+    }
+
+    /**
+     * @param array{name?: mixed} $request
+     *
+     * @return array{
+     *   metadata: array{
+     *     clientTransactionId: string|null,
+     *     message: string,
+     *     resultCode: int,
+     *     serverTransactionId: string|null
+     *   }
+     * }
+     */
+    public function delete(array $request): array
+    {
+        $xml = (new DomainDeleteRequestBuilder())->build(
+            new DomainDeleteRequest($this->requireName($request)),
+            $this->tridGenerator->nextId(),
+        );
+
+        $response = $this->executor->execute(
+            $xml,
+            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                (new DomainDeleteResponseParser())->parse($responseXml, $metadata),
+        );
+
+        return [
+            'metadata' => [
+                'clientTransactionId' => $response->metadata->clientTransactionId,
+                'message' => $response->metadata->message,
+                'resultCode' => $response->metadata->resultCode,
+                'serverTransactionId' => $response->metadata->serverTransactionId,
+            ],
+        ];
+    }
+
+    /**
+     * @param array{
+     *   operation?: mixed,
+     *   name?: mixed,
+     *   period?: mixed,
+     *   periodUnit?: mixed,
+     *   authInfo?: mixed
+     * } $request
+     *
+     * @return array{
+     *   metadata: array{
+     *     clientTransactionId: string|null,
+     *     message: string,
+     *     resultCode: int,
+     *     serverTransactionId: string|null
+     *   },
+     *   transfer: array{
+     *     name: string|null,
+     *     transferStatus: string|null,
+     *     requestClientId: string|null,
+     *     requestDate: string|null,
+     *     actionClientId: string|null,
+     *     actionDate: string|null,
+     *     expirationDate: string|null
+     *   }
+     * }
+     */
+    public function transfer(array $request): array
+    {
+        $xml = (new DomainTransferRequestBuilder())->build(
+            new DomainTransferRequest(
+                $this->requireTransferOperation($request),
+                $this->requireName($request),
+                $this->optionalPositiveInt($request, 'period'),
+                $this->optionalPeriodUnit($request),
+                $this->optionalNullableString($request, 'authInfo'),
+            ),
+            $this->tridGenerator->nextId(),
+        );
+
+        $response = $this->executor->execute(
+            $xml,
+            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                (new DomainTransferResponseParser())->parse($responseXml, $metadata),
+        );
+
+        return [
+            'metadata' => [
+                'clientTransactionId' => $response->metadata->clientTransactionId,
+                'message' => $response->metadata->message,
+                'resultCode' => $response->metadata->resultCode,
+                'serverTransactionId' => $response->metadata->serverTransactionId,
+            ],
+            'transfer' => [
+                'actionClientId' => $response->actionClientId,
+                'actionDate' => $response->actionDate,
+                'expirationDate' => $response->expirationDate,
+                'name' => $response->name,
+                'requestClientId' => $response->requestClientId,
+                'requestDate' => $response->requestDate,
+                'transferStatus' => $response->transferStatus,
+            ],
+        ];
+    }
+
+    /**
      * @param array{names?: mixed} $request
      *
      * @return list<string>
@@ -317,5 +479,99 @@ final class DomainService
         }
 
         return $name;
+    }
+
+    /**
+     * @param array{currentExpirationDate?: mixed} $request
+     */
+    private function requireCurrentExpirationDate(array $request): string
+    {
+        $currentExpirationDate = $request['currentExpirationDate'] ?? null;
+
+        if (!\is_string($currentExpirationDate) || '' === \trim($currentExpirationDate)) {
+            throw new \InvalidArgumentException(
+                'Domain renew request key "currentExpirationDate" must be a non-empty string.',
+            );
+        }
+
+        return $currentExpirationDate;
+    }
+
+    /**
+     * @param array{operation?: mixed} $request
+     */
+    private function requireTransferOperation(array $request): string
+    {
+        $errorMessage = 'Domain transfer request key "operation" must be one of '
+            . '"request", "query", "cancel", "approve", or "reject".';
+        $allowedOperations = [ 'request', 'query', 'cancel', 'approve', 'reject' ];
+
+        $operation = $request['operation'] ?? null;
+
+        if (!\is_string($operation)) {
+            throw new \InvalidArgumentException($errorMessage);
+        }
+
+        if (\in_array($operation, $allowedOperations, true)) {
+            return $operation;
+        }
+
+        throw new \InvalidArgumentException($errorMessage);
+    }
+
+    /**
+     * @param array<string, mixed> $request
+     */
+    private function optionalNullableString(array $request, string $key): ?string
+    {
+        $value = $request[$key] ?? null;
+
+        if (null === $value) {
+            return null;
+        }
+
+        if (!\is_string($value) || '' === \trim($value)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain request key "%s" must be a non-empty string when provided.', $key),
+            );
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $request
+     */
+    private function optionalPositiveInt(array $request, string $key): ?int
+    {
+        $value = $request[$key] ?? null;
+
+        if (null === $value) {
+            return null;
+        }
+
+        if (!\is_int($value) || $value <= 0) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain request key "%s" must be a positive integer when provided.', $key),
+            );
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param array{periodUnit?: mixed} $request
+     */
+    private function optionalPeriodUnit(array $request): string
+    {
+        $unit = $request['periodUnit'] ?? 'y';
+
+        if (!\is_string($unit) || !\in_array($unit, [ 'y', 'm' ], true)) {
+            throw new \InvalidArgumentException(
+                'Domain request key "periodUnit" must be either "y" or "m" when provided.',
+            );
+        }
+
+        return $unit;
     }
 }

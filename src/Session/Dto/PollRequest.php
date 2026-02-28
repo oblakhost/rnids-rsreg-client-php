@@ -9,6 +9,10 @@ namespace RNIDS\Session\Dto;
  */
 final class PollRequest
 {
+    /**
+     * @param string $operation Poll operation, typically "req" or "ack".
+     * @param string|null $messageId Queue message id used for ack operations.
+     */
     public function __construct(
         public readonly string $operation = 'req',
         public readonly ?string $messageId = null,

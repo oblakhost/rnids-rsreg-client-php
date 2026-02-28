@@ -13,6 +13,9 @@ final class NativeStreamTransport implements Transport
      */
     private $connection = null;
 
+    /**
+     * @param EppFrameCodec|null $frameCodec Optional codec override for testing.
+     */
     public function __construct(
         private readonly ConnectionConfig $connectionConfig,
         private readonly ?TlsConfig $tlsConfig = null,
@@ -21,6 +24,9 @@ final class NativeStreamTransport implements Transport
         $this->frameCodec = $frameCodec ?? new EppFrameCodec();
     }
 
+    /**
+     * Opens a socket connection and applies configured runtime options.
+     */
     public function connect(): void
     {
         if (\is_resource($this->connection)) {
@@ -60,6 +66,9 @@ final class NativeStreamTransport implements Transport
         $this->connection = $connection;
     }
 
+    /**
+     * Closes the active socket connection when present.
+     */
     public function disconnect(): void
     {
         if (!\is_resource($this->connection)) {
@@ -70,6 +79,9 @@ final class NativeStreamTransport implements Transport
         $this->connection = null;
     }
 
+    /**
+     * Writes one full EPP frame to the stream.
+     */
     public function writeFrame(string $payload): void
     {
         $connection = $this->requireConnection();
@@ -93,6 +105,9 @@ final class NativeStreamTransport implements Transport
         }
     }
 
+    /**
+     * Reads and decodes one EPP frame payload from the stream.
+     */
     public function readFrame(): string
     {
         $connection = $this->requireConnection();

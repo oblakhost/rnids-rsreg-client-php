@@ -13,6 +13,9 @@ final class CommandExecutor
 {
     private ResponseMetadataParser $responseMetadataParser;
 
+    /**
+     * @param ResponseMetadataParser|null $responseMetadataParser Optional parser override for tests.
+     */
     public function __construct(
         private readonly Transport $transport,
         ?ResponseMetadataParser $responseMetadataParser = null,

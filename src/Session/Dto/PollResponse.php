@@ -11,6 +11,13 @@ use RNIDS\Xml\Response\ResponseMetadata;
  */
 final class PollResponse
 {
+    /**
+     * @param ResponseMetadata $metadata Parsed EPP response metadata.
+     * @param int|null $queueCount Number of messages currently in queue.
+     * @param string|null $messageId Queue message identifier.
+     * @param string|null $queueDate Queue message timestamp.
+     * @param string|null $message Queue message text.
+     */
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?int $queueCount,

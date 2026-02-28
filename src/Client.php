@@ -158,16 +158,25 @@ final class Client
         $this->loggedIn = true;
     }
 
+    /**
+     * Ensures an authenticated session is gracefully closed on object destruction.
+     */
     public function __destruct()
     {
         $this->close();
     }
 
+    /**
+     * Returns the active transport instance.
+     */
     public function transport(): Transport
     {
         return $this->transport ?? throw new \RuntimeException('Transport is not initialized.');
     }
 
+    /**
+     * Logs out the session when needed and disconnects the transport.
+     */
     public function close(): void
     {
         if (null === $this->transport) {
@@ -187,11 +196,17 @@ final class Client
         $this->transport = null;
     }
 
+    /**
+     * Returns the fluent session service.
+     */
     public function session(): SessionService
     {
         return $this->sessionService;
     }
 
+    /**
+     * Returns the fluent domain service.
+     */
     public function domain(): DomainService
     {
         return $this->domainService;

@@ -423,4 +423,215 @@ final class DomainServiceTest extends TestCase
             'registrant' => 'REG-1',
         ]);
     }
+
+    public function testRenewSendsDomainRenewCommandAndMapsParsedResponse(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:renData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:exDate>2028-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:renData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000004</clTRID><svTRID>SV-4</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $generator = new class () implements ClTridGenerator {
+            public function nextId(): string
+            {
+                return 'DOMAIN-00000004';
+            }
+        };
+
+        $service = new DomainService($transport, null, $generator);
+        $result = $service->renew([
+            'currentExpirationDate' => '2027-02-01',
+            'name' => 'example.rs',
+            'period' => 1,
+            'periodUnit' => 'y',
+        ]);
+
+        self::assertStringContainsString('<domain:renew', $transport->writtenPayload);
+        self::assertStringContainsString(
+            '<domain:curExpDate>2027-02-01</domain:curExpDate>',
+            $transport->writtenPayload,
+        );
+        self::assertSame(1000, $result['metadata']['resultCode']);
+        self::assertSame('example.rs', $result['renewal']['name']);
+        self::assertSame('2028-02-01T00:00:00.0Z', $result['renewal']['expirationDate']);
+    }
+
+    public function testDeleteSendsDomainDeleteCommandAndMapsParsedResponse(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<trID><clTRID>DOMAIN-00000005</clTRID><svTRID>SV-5</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $generator = new class () implements ClTridGenerator {
+            public function nextId(): string
+            {
+                return 'DOMAIN-00000005';
+            }
+        };
+
+        $service = new DomainService($transport, null, $generator);
+        $result = $service->delete([ 'name' => 'example.rs' ]);
+
+        self::assertStringContainsString('<domain:delete', $transport->writtenPayload);
+        self::assertSame(1000, $result['metadata']['resultCode']);
+    }
+
+    public function testTransferSendsDomainTransferCommandAndMapsParsedResponse(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1001"><msg>Command completed successfully; action pending</msg></result>'
+                    . '<resData>'
+                    . '<domain:trnData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:trStatus>pending</domain:trStatus>'
+                    . '<domain:reID>REQ-1</domain:reID>'
+                    . '<domain:reDate>2026-03-01T10:00:00.0Z</domain:reDate>'
+                    . '<domain:acID>ACT-1</domain:acID>'
+                    . '<domain:acDate>2026-03-06T10:00:00.0Z</domain:acDate>'
+                    . '<domain:exDate>2027-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:trnData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000006</clTRID><svTRID>SV-6</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $generator = new class () implements ClTridGenerator {
+            public function nextId(): string
+            {
+                return 'DOMAIN-00000006';
+            }
+        };
+
+        $service = new DomainService($transport, null, $generator);
+        $result = $service->transfer([
+            'authInfo' => 'secret',
+            'name' => 'example.rs',
+            'operation' => 'request',
+            'period' => 1,
+            'periodUnit' => 'y',
+        ]);
+
+        self::assertStringContainsString('<transfer op="request">', $transport->writtenPayload);
+        self::assertSame(1001, $result['metadata']['resultCode']);
+        self::assertSame('example.rs', $result['transfer']['name']);
+        self::assertSame('pending', $result['transfer']['transferStatus']);
+    }
+
+    public function testTransferThrowsForInvalidOperation(): void
+    {
+        $transport = new class () implements Transport {
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function readFrame(): string
+            {
+                return '';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $expectedMessage = 'Domain transfer request key "operation" must be one of '
+            . '"request", "query", "cancel", "approve", or "reject".';
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expectedMessage);
+
+        $service->transfer([
+            'name' => 'example.rs',
+            'operation' => 'invalid',
+        ]);
+    }
 }

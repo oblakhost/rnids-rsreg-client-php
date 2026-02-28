@@ -25,6 +25,10 @@ final class SessionService
 
     private ClTridGenerator $tridGenerator;
 
+    /**
+     * @param CommandExecutor|null $executor Optional command executor override for tests.
+     * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
+     */
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
