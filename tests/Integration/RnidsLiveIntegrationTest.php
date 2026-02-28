@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
+use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Client;
@@ -57,9 +58,32 @@ final class RnidsLiveIntegrationTest extends TestCase
         self::assertContains('urn:ietf:params:xml:ns:domain-1.0', $result['greeting']['objectUris']);
     }
 
-    public function testDomainCheckReturnsItemForRequestedDomain(): void
+    /**
+     * @return non-empty-string
+     */
+    public function testDomainRegisterCreatesUniqueDomain(): string
     {
-        $domain = IntegrationConfig::testDomainName();
+        IntegrationConfig::ensureRegisterReadyOrSkip();
+
+        $domain = IntegrationConfig::uniqueRegisterDomainName();
+        $registerRequest = IntegrationConfig::domainRegisterRequest($domain);
+        $result = self::client()->domain()->register($registerRequest);
+
+        self::assertSame(1000, $result['metadata']['resultCode']);
+        self::assertSame($domain, $result['creation']['name']);
+        self::assertNotNull($result['creation']['createDate']);
+        self::assertNotNull($result['creation']['expirationDate']);
+
+        return $domain;
+    }
+
+    /**
+     * @param non-empty-string $registeredDomain
+     */
+    #[Depends('testDomainRegisterCreatesUniqueDomain')]
+    public function testDomainCheckReturnsItemForRegisteredDomain(string $registeredDomain): void
+    {
+        $domain = $registeredDomain;
         $result = self::client()->domain()->check([ 'names' => [ $domain ] ]);
 
         self::assertSame(1000, $result['metadata']['resultCode']);
@@ -68,7 +92,23 @@ final class RnidsLiveIntegrationTest extends TestCase
         self::assertIsBool($result['items'][0]['available']);
     }
 
-    public function testDomainInfoReadsConfiguredTestDomain(): void
+    /**
+     * @param non-empty-string $registeredDomain
+     */
+    #[Depends('testDomainRegisterCreatesUniqueDomain')]
+    public function testDomainInfoReadsRegisteredDomain(string $registeredDomain): void
+    {
+        $domain = $registeredDomain;
+        $result = self::client()->domain()->info($domain);
+
+        self::assertSame(1000, $result['metadata']['resultCode']);
+        self::assertSame($domain, $result['info']['name']);
+        self::assertSame(IntegrationConfig::registerRegistrantHandle(), $result['info']['registrant']);
+        self::assertIsArray($result['info']['statuses']);
+        self::assertArrayHasKey('extension', $result['info']);
+    }
+
+    public function testDomainInfoReadsConfiguredStableFixtureDomain(): void
     {
         $domain = IntegrationConfig::testDomainName();
         $result = self::client()->domain()->info($domain);
@@ -76,7 +116,6 @@ final class RnidsLiveIntegrationTest extends TestCase
         self::assertSame(1000, $result['metadata']['resultCode']);
         self::assertSame($domain, $result['info']['name']);
         self::assertIsArray($result['info']['statuses']);
-        self::assertArrayHasKey('extension', $result['info']);
     }
 
     public function testPollReqReturnsMetadataAndQueueShape(): void

@@ -14,6 +14,13 @@ final class IntegrationConfig
 
     private const DEFAULT_TEST_DOMAIN = 'komodarstvo.rs';
 
+    private const DEFAULT_REGISTER_AUTH_INFO = 'Rnids-Integration-Auth-2026';
+
+    private const DEFAULT_REGISTER_NAMESERVERS = [
+        'ns1.komodarstvo.rs',
+        'ns2.komodarstvo.rs',
+    ];
+
     private const DEFAULT_CLIENT_CERT_CANDIDATES = [
         'tests/fixtures/oblak.pem',
         'tests/fixtures/client.pem',
@@ -79,6 +86,66 @@ final class IntegrationConfig
         self::ensureFileOrSkip(self::caCertificatePath(), 'RNIDS CA certificate');
     }
 
+    public static function ensureRegisterReadyOrSkip(): void
+    {
+        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_REGISTRANT');
+        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_ADMIN_CONTACT');
+        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_TECH_CONTACT');
+    }
+
+    /**
+     * @return non-empty-string
+     */
+    public static function uniqueRegisterDomainName(): string
+    {
+        $prefix = \strtolower(\date('ymdHis'));
+        $randomSuffix = \strtolower(\bin2hex(\random_bytes(2)));
+
+        return \sprintf('it%s%s.rs', $prefix, $randomSuffix);
+    }
+
+    /**
+     * @return array{
+     *   name: non-empty-string,
+     *   period: int,
+     *   periodUnit: 'y',
+     *   nameservers: list<array{name: non-empty-string}>,
+     *   registrant: non-empty-string,
+     *   contacts: list<array{type: 'admin'|'tech', handle: non-empty-string}>,
+     *   authInfo: non-empty-string
+     * }
+     */
+    public static function domainRegisterRequest(string $domainName): array
+    {
+        if ('' === \trim($domainName)) {
+            throw new \InvalidArgumentException('Domain name must be a non-empty string.');
+        }
+
+        return [
+            'authInfo' => self::registerAuthInfo(),
+            'contacts' => [
+                [
+                    'handle' => self::requiredEnv('RNIDS_EPP_REGISTER_ADMIN_CONTACT'),
+                    'type' => 'admin',
+                ],
+                [
+                    'handle' => self::requiredEnv('RNIDS_EPP_REGISTER_TECH_CONTACT'),
+                    'type' => 'tech',
+                ],
+            ],
+            'name' => $domainName,
+            'nameservers' => self::registerNameservers(),
+            'period' => 1,
+            'periodUnit' => 'y',
+            'registrant' => self::requiredEnv('RNIDS_EPP_REGISTER_REGISTRANT'),
+        ];
+    }
+
+    public static function registerRegistrantHandle(): string
+    {
+        return self::requiredEnv('RNIDS_EPP_REGISTER_REGISTRANT');
+    }
+
     private static function clientCertificatePath(): string
     {
         return self::certificatePathFromEnvOrCandidates(
@@ -106,19 +173,81 @@ final class IntegrationConfig
         return $password;
     }
 
+    private static function registerAuthInfo(): string
+    {
+        $authInfo = \getenv('RNIDS_EPP_REGISTER_AUTH_INFO');
+
+        if (!\is_string($authInfo) || '' === \trim($authInfo)) {
+            return self::DEFAULT_REGISTER_AUTH_INFO;
+        }
+
+        return $authInfo;
+    }
+
+    /**
+     * @return list<array{name: non-empty-string}>
+     */
+    private static function registerNameservers(): array
+    {
+        $rawNameservers = \getenv('RNIDS_EPP_REGISTER_NAMESERVERS');
+
+        if (!\is_string($rawNameservers) || '' === \trim($rawNameservers)) {
+            return \array_map(
+                static fn(string $host): array => [ 'name' => $host ],
+                self::DEFAULT_REGISTER_NAMESERVERS,
+            );
+        }
+
+        $nameservers = \array_values(\array_filter(
+            \array_map(static fn(string $value): string => \trim($value), \explode(',', $rawNameservers)),
+            static fn(string $value): bool => '' !== $value,
+        ));
+
+        if ([] === $nameservers) {
+            throw new \RuntimeException(
+                'Environment variable "RNIDS_EPP_REGISTER_NAMESERVERS" must contain at least one host.',
+            );
+        }
+
+        return \array_map(
+            static fn(string $host): array => [ 'name' => $host ],
+            $nameservers,
+        );
+    }
+
     /**
      * @param list<string> $candidates
      */
     private static function certificatePathFromEnvOrCandidates(string $envName, array $candidates): string
     {
-        $envPath = \getenv($envName);
+        $envPath = self::nonEmptyEnvOrNull($envName);
 
-        if (\is_string($envPath) && '' !== \trim($envPath)) {
+        if (null !== $envPath) {
             return $envPath;
         }
 
         $projectRoot = \dirname(__DIR__, 3);
 
+        return self::firstReadableCandidatePath($projectRoot, $candidates)
+            ?? $projectRoot . '/' . $candidates[0];
+    }
+
+    private static function nonEmptyEnvOrNull(string $envName): ?string
+    {
+        $value = \getenv($envName);
+
+        if (!\is_string($value) || '' === \trim($value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param list<string> $candidates
+     */
+    private static function firstReadableCandidatePath(string $projectRoot, array $candidates): ?string
+    {
         foreach ($candidates as $candidate) {
             $candidatePath = $projectRoot . '/' . $candidate;
 
@@ -127,7 +256,7 @@ final class IntegrationConfig
             }
         }
 
-        return $projectRoot . '/' . $candidates[0];
+        return null;
     }
 
     private static function ensureEnvOrSkip(string $name): void
