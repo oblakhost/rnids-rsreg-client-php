@@ -1,8 +1,9 @@
+#!/usr/bin/env php
 <?php
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../vendor/autoload.php';
 
 /**
  * @return never
@@ -18,6 +19,7 @@ function fail(string $message, int $exitCode = 1): void
  */
 function resolvePathFromEnvOrCandidates(string $envName, array $candidates): string
 {
+    $projectRoot = dirname(__DIR__);
     $envPath = getenv($envName);
 
     if (is_string($envPath) && '' !== trim($envPath)) {
@@ -25,14 +27,14 @@ function resolvePathFromEnvOrCandidates(string $envName, array $candidates): str
     }
 
     foreach ($candidates as $candidate) {
-        $candidatePath = __DIR__ . '/' . $candidate;
+        $candidatePath = $projectRoot . '/' . $candidate;
 
         if (is_file($candidatePath) && is_readable($candidatePath)) {
             return $candidatePath;
         }
     }
 
-    return __DIR__ . '/' . $candidates[0];
+    return $projectRoot . '/' . $candidates[0];
 }
 
 function envStringOrDefault(string $envName, string $default): string
@@ -91,20 +93,20 @@ function usageAndFail(): void
     fail(
         <<<'USAGE'
 Usage:
-  php cli.php domain:info <domainname>
-  php cli.php host:check <comma-separated-hosts>
-  php cli.php host:info <hostname>
-  php cli.php host:create <json-payload>
-  php cli.php host:update <json-payload>
-  php cli.php host:delete <hostname>
+  vendor/bin/rsreg domain:info <domainname>
+  vendor/bin/rsreg host:check <comma-separated-hosts>
+  vendor/bin/rsreg host:info <hostname>
+  vendor/bin/rsreg host:create <json-payload>
+  vendor/bin/rsreg host:update <json-payload>
+  vendor/bin/rsreg host:delete <hostname>
 
 Examples:
-  php cli.php domain:info example.rs
-  php cli.php host:check ns1.example.rs,ns2.example.rs
-  php cli.php host:info ns1.example.rs
-  php cli.php host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'
-  php cli.php host:update '{"name":"ns7.example.rs","add":{"addresses":[{"address":"2001:db8::7","ipVersion":"v6"}]}}'
-  php cli.php host:delete ns7.example.rs
+  vendor/bin/rsreg domain:info example.rs
+  vendor/bin/rsreg host:check ns1.example.rs,ns2.example.rs
+  vendor/bin/rsreg host:info ns1.example.rs
+  vendor/bin/rsreg host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'
+  vendor/bin/rsreg host:update '{"name":"ns7.example.rs","add":{"addresses":[{"address":"2001:db8::7","ipVersion":"v6"}]}}'
+  vendor/bin/rsreg host:delete ns7.example.rs
 USAGE,
         2,
     );
