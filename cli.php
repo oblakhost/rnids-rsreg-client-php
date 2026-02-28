@@ -84,6 +84,64 @@ function assertReadableFile(string $path, string $label): void
 }
 
 /**
+ * @return never
+ */
+function usageAndFail(): void
+{
+    fail(
+        <<<'USAGE'
+Usage:
+  php cli.php domain:info <domainname>
+  php cli.php host:check <comma-separated-hosts>
+  php cli.php host:info <hostname>
+  php cli.php host:create <json-payload>
+  php cli.php host:update <json-payload>
+  php cli.php host:delete <hostname>
+
+Examples:
+  php cli.php domain:info example.rs
+  php cli.php host:check ns1.example.rs,ns2.example.rs
+  php cli.php host:info ns1.example.rs
+  php cli.php host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'
+  php cli.php host:update '{"name":"ns7.example.rs","add":{"addresses":[{"address":"2001:db8::7","ipVersion":"v6"}]}}'
+  php cli.php host:delete ns7.example.rs
+USAGE,
+        2,
+    );
+}
+
+/**
+ * @return array<string, mixed>
+ */
+function decodeJsonObjectArgument(string $command, string $rawPayload): array
+{
+    $decoded = json_decode($rawPayload, true);
+
+    if (!is_array($decoded)) {
+        fail(sprintf('%s payload must decode to a JSON object.', $command), 2);
+    }
+
+    return $decoded;
+}
+
+/**
+ * @return list<string>
+ */
+function parseHostNamesList(string $raw): array
+{
+    $chunks = array_filter(
+        array_map('trim', explode(',', $raw)),
+        static fn(string $value): bool => '' !== $value,
+    );
+
+    if ([] === $chunks) {
+        fail('host:check requires at least one non-empty host name.', 2);
+    }
+
+    return array_values($chunks);
+}
+
+/**
  * @return array{
  *   host: string,
  *   port: int,
@@ -163,15 +221,12 @@ function clientConfig(): array
     ];
 }
 
-if ($argc < 3 || 'domain:info' !== $argv[1]) {
-    fail('Usage: php test.php domain:info <domainname>', 2);
+if ($argc < 3) {
+    usageAndFail();
 }
 
-$domainName = trim((string) $argv[2]);
-
-if ('' === $domainName) {
-    fail('Domain name must be a non-empty string.', 2);
-}
+$command = trim((string) $argv[1]);
+$argument = (string) $argv[2];
 
 try {
     $config = clientConfig();
@@ -191,11 +246,26 @@ try {
     );
 
     $client = new RNIDS\Client($config);
-    $response = $client->domain()->info($domainName);
+
+    $response = match ($command) {
+        'domain:info' => $client->domain()->info(trim($argument)),
+        'host:check' => $client->host()->check([
+            'names' => parseHostNamesList($argument),
+        ]),
+        'host:info' => $client->host()->info(trim($argument)),
+        'host:create' => $client->host()->create(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'host:update' => $client->host()->update(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'host:delete' => $client->host()->delete(trim($argument)),
+        default => usageAndFail(),
+    };
 
     echo json_encode($response, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 } catch (\Throwable $exception) {
     fail(
-        sprintf('domain:info failed: %s', $exception->getMessage()),
+        sprintf('%s failed: %s', $command, $exception->getMessage()),
     );
 }
