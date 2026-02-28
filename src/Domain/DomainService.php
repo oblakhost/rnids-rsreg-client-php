@@ -38,6 +38,17 @@ final class DomainService
 
     private DomainRegisterRequestFactory $registerRequestFactory;
 
+    private static function normalizeNameserverAddress(mixed $address, int $addressIndex): string
+    {
+        if (!\is_string($address) || '' === \trim($address)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain register nameserver address at index %d is invalid.', $addressIndex),
+            );
+        }
+
+        return $address;
+    }
+
     /**
      * @param CommandExecutor|null $executor Optional command executor override for tests.
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
@@ -56,14 +67,14 @@ final class DomainService
     }
 
     /**
-     * @param array{names?: mixed} $request
+     * @param array{names?: mixed}|list<mixed>|non-empty-string $request
      *
      * @return array{items: list<array{name: string, available: bool, reason: string|null}>}
      */
-    public function check(array $request): array
+    public function check(string|array $request): array
     {
         $xml = (new DomainCheckRequestBuilder())->build(
-            new DomainCheckRequest($this->requireNames($request)),
+            new DomainCheckRequest($this->normalizeCheckNames($request)),
             $this->tridGenerator->nextId(),
         );
 
@@ -175,14 +186,38 @@ final class DomainService
      *   contacts?: mixed,
      *   authInfo?: mixed,
      *   extension?: mixed
-     * } $request
+     * }|non-empty-string $request
+     * @param non-empty-string|null $registrant
+     * @param non-empty-string|null $adminContact
+     * @param non-empty-string|null $techContact
+     * @param non-empty-string|array<int, mixed>|null $nameservers
+     * @param int|null $years
      *
      * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
      */
-    public function register(array $request): array
-    {
+    public function register(
+        string|array $request,
+        ?string $registrant = null,
+        ?string $adminContact = null,
+        ?string $techContact = null,
+        string|array|null $nameservers = null,
+        ?int $years = 1,
+        ?string $authInfo = null,
+        ?array $extension = null,
+    ): array {
+        $normalizedRequest = $this->normalizeRegisterRequest(
+            $request,
+            $registrant,
+            $adminContact,
+            $techContact,
+            $nameservers,
+            $years,
+            $authInfo,
+            $extension,
+        );
+
         $xml = (new DomainRegisterRequestBuilder())->build(
-            $this->registerRequestFactory->fromArray($request),
+            $this->registerRequestFactory->fromArray($normalizedRequest),
             $this->tridGenerator->nextId(),
         );
 
@@ -200,18 +235,25 @@ final class DomainService
     }
 
     /**
-     * @param array{name?: mixed, currentExpirationDate?: mixed, period?: mixed, periodUnit?: mixed} $request
+     * @param array{
+     *   name?: mixed,
+     *   currentExpirationDate?: mixed,
+     *   period?: mixed,
+     *   periodUnit?: mixed
+     * }|non-empty-string $request
      *
      * @return array{name: string|null, expirationDate: string|null}
      */
-    public function renew(array $request): array
+    public function renew(string|array $request, ?int $years = null): array
     {
+        $normalizedRequest = $this->normalizeRenewRequest($request, $years);
+
         $xml = (new DomainRenewRequestBuilder())->build(
             new DomainRenewRequest(
-                $this->requireName($request),
-                $this->requireCurrentExpirationDate($request),
-                $this->optionalPositiveInt($request, 'period'),
-                $this->optionalPeriodUnit($request),
+                $this->requireName($normalizedRequest),
+                $this->requireCurrentExpirationDate($normalizedRequest),
+                $this->optionalPositiveInt($normalizedRequest, 'period'),
+                $this->optionalPeriodUnit($normalizedRequest),
             ),
             $this->tridGenerator->nextId(),
         );
@@ -294,6 +336,213 @@ final class DomainService
             'requestDate' => $response->requestDate,
             'transferStatus' => $response->transferStatus,
         ];
+    }
+
+    /**
+     * @param array{
+     *   name?: mixed,
+     *   period?: mixed,
+     *   periodUnit?: mixed,
+     *   nameservers?: mixed,
+     *   registrant?: mixed,
+     *   contacts?: mixed,
+     *   authInfo?: mixed,
+     *   extension?: mixed
+     * }|non-empty-string $request
+     * @param non-empty-string|null $registrant
+     * @param non-empty-string|null $adminContact
+     * @param non-empty-string|null $techContact
+     * @param non-empty-string|array<int, mixed>|null $nameservers
+     * @param int|null $years
+     *
+     * @return array{
+     *   name: string,
+     *   period: int,
+     *   periodUnit: string,
+     *   nameservers: list<array{name: string, addresses?: list<string>}>,
+     *   registrant: string,
+     *   contacts: list<array{type: string, handle: string}>,
+     *   authInfo?: string,
+     *   extension?: array<string, mixed>
+     * }|array<string, mixed>
+     */
+    private function normalizeRegisterRequest(
+        string|array $request,
+        ?string $registrant,
+        ?string $adminContact,
+        ?string $techContact,
+        string|array|null $nameservers,
+        ?int $years,
+        ?string $authInfo,
+        ?array $extension,
+    ): array {
+        if (\is_array($request)) {
+            return $request;
+        }
+
+        if (null === $years || $years <= 0) {
+            throw new \InvalidArgumentException(
+                'Domain register years must be a positive integer in simplified register API.',
+            );
+        }
+
+        return [
+            'authInfo' => $authInfo,
+            'contacts' => [
+                [
+                    'handle' => $this->requireSimplifiedRegisterValue($adminContact, 'adminContact'),
+                    'type' => 'admin',
+                ],
+                [
+                    'handle' => $this->requireSimplifiedRegisterValue($techContact, 'techContact'),
+                    'type' => 'tech',
+                ],
+            ],
+            'extension' => $extension,
+            'name' => $this->requireDomainName($request),
+            'nameservers' => $this->normalizeSimplifiedNameservers($nameservers),
+            'period' => $years,
+            'periodUnit' => 'y',
+            'registrant' => $this->requireSimplifiedRegisterValue($registrant, 'registrant'),
+        ];
+    }
+
+    private function requireSimplifiedRegisterValue(?string $value, string $key): string
+    {
+        if (!\is_string($value) || '' === \trim($value)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain register key "%s" must be a non-empty string in simplified API.', $key),
+            );
+        }
+
+        return $value;
+    }
+
+    /**
+     * @param non-empty-string|array<int, mixed>|null $nameservers
+     *
+     * @return list<array{name: string, addresses?: list<string>}>
+     */
+    private function normalizeSimplifiedNameservers(string|array|null $nameservers): array
+    {
+        if (null === $nameservers) {
+            throw new \InvalidArgumentException(
+                'Domain register simplified API requires at least one nameserver.',
+            );
+        }
+
+        if (\is_string($nameservers)) {
+            return [ [ 'name' => $this->requireDomainName($nameservers) ] ];
+        }
+
+        if ([] === $nameservers) {
+            throw new \InvalidArgumentException(
+                'Domain register simplified API requires at least one nameserver.',
+            );
+        }
+
+        return \array_values(\array_map(
+            fn(mixed $nameserver, int $index): array => $this->normalizeSingleNameserver($nameserver, $index),
+            $nameservers,
+            \array_keys($nameservers),
+        ));
+    }
+
+    /**
+     * @return array{name: string, addresses?: list<string>}
+     */
+    private function normalizeSingleNameserver(mixed $nameserver, int $index): array
+    {
+        if (\is_string($nameserver)) {
+            return [ 'name' => $this->requireDomainName($nameserver) ];
+        }
+
+        if (!\is_array($nameserver)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain register nameserver at index %d is invalid.', $index),
+            );
+        }
+
+        $name = $this->extractNameserverName($nameserver, $index);
+        $addresses = $this->extractNameserverAddresses($nameserver, $index);
+
+        if ([] === $addresses) {
+            return [ 'name' => $name ];
+        }
+
+        return [
+            'addresses' => $addresses,
+            'name' => $name,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $nameserver
+     */
+    private function extractNameserverName(array $nameserver, int $index): string
+    {
+        $name = $nameserver['name'] ?? null;
+
+        if (!\is_string($name) || '' === \trim($name)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain register nameserver at index %d requires non-empty "name".', $index),
+            );
+        }
+
+        return $name;
+    }
+
+    /**
+     * @param array<string, mixed> $nameserver
+     *
+     * @return list<string>
+     */
+    private function extractNameserverAddresses(array $nameserver, int $index): array
+    {
+        $addresses = $nameserver['addresses'] ?? null;
+
+        if (null === $addresses) {
+            return [];
+        }
+
+        if (!\is_array($addresses)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain register nameserver at index %d field "addresses" must be a list.', $index),
+            );
+        }
+
+        return \array_values(\array_map(
+            static fn(mixed $address, int $addressIndex): string =>
+                self::normalizeNameserverAddress($address, $addressIndex),
+            $addresses,
+            \array_keys($addresses),
+        ));
+    }
+
+    /**
+     * @param array{names?: mixed}|list<mixed>|non-empty-string $request
+     *
+     * @return list<string>
+     */
+    private function normalizeCheckNames(string|array $request): array
+    {
+        if (\is_string($request)) {
+            return [ $this->requireNameString($request) ];
+        }
+
+        if (isset($request['names'])) {
+            return $this->requireNames($request);
+        }
+
+        $this->assertNamesList($request);
+
+        $result = [];
+
+        foreach ($request as $name) {
+            $result[] = $this->requireNameString($name);
+        }
+
+        return $result;
     }
 
     /**
@@ -397,6 +646,70 @@ final class DomainService
         }
 
         return $currentExpirationDate;
+    }
+
+    /**
+     * @param array{
+     *   name?: mixed,
+     *   currentExpirationDate?: mixed,
+     *   period?: mixed,
+     *   periodUnit?: mixed
+     * }|non-empty-string $request
+     *
+     * @return array{name: string, currentExpirationDate: string, period?: int, periodUnit?: string}
+     */
+    private function normalizeRenewRequest(string|array $request, ?int $years): array
+    {
+        if (\is_array($request)) {
+            return $request;
+        }
+
+        if (null === $years || $years <= 0) {
+            throw new \InvalidArgumentException(
+                'Domain renew years must be a positive integer when using simplified renew API.',
+            );
+        }
+
+        $name = $this->requireDomainName($request);
+        $expirationDate = $this->resolveCurrentExpirationDate($name);
+
+        return [
+            'currentExpirationDate' => $expirationDate,
+            'name' => $name,
+            'period' => $years,
+            'periodUnit' => 'y',
+        ];
+    }
+
+    private function resolveCurrentExpirationDate(string $name): string
+    {
+        $info = $this->info($name);
+        $expirationDate = $info['expirationDate'] ?? null;
+
+        if (!\is_string($expirationDate) || '' === \trim($expirationDate)) {
+            throw new \InvalidArgumentException(
+                'Unable to resolve current expiration date for simplified domain renew API.',
+            );
+        }
+
+        return $this->normalizeExpirationDateForRenew($expirationDate);
+    }
+
+    private function normalizeExpirationDateForRenew(string $expirationDate): string
+    {
+        if (1 === \preg_match('/^\d{4}-\d{2}-\d{2}$/', $expirationDate)) {
+            return $expirationDate;
+        }
+
+        $dateOnly = \substr($expirationDate, 0, 10);
+
+        if (1 === \preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateOnly)) {
+            return $dateOnly;
+        }
+
+        throw new \InvalidArgumentException(
+            'Resolved domain expiration date has invalid format for renew request.',
+        );
     }
 
     /**

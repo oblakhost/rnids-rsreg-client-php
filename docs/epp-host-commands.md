@@ -20,6 +20,13 @@ Determine availability/existence of host objects.
 - `2005` invalid DNS name syntax
 - `2303` missing host name parameter
 
+### Client Convenience API (this library)
+
+- Full payload (legacy-compatible):
+  - `host()->check(array $request)`
+- Simplified fluent form:
+  - `host()->check($hostname)` or `host()->check([$hostname1, $hostname2])`
+
 ## `host:create`
 
 ### Purpose
@@ -37,6 +44,13 @@ Create host object.
 ### Typical Errors
 - `2005` invalid DNS name
 - `2302` object exists
+
+### Client Convenience API (this library)
+
+- Full payload (legacy-compatible):
+  - `host()->create(array $request)`
+- Simplified fluent form:
+  - `host()->create($hostname, ?string $ipv4 = null, ?string $ipv6 = null)`
 
 ## `host:info`
 

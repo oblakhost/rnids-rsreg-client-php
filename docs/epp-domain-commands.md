@@ -59,6 +59,17 @@ Optional `secDNS:create` supports DS data:
 - `2303` contact not found
 - `2306` policy errors (duplicate NS, unsupported keyData)
 
+### Client Convenience API (this library)
+
+- Full payload (legacy-compatible):
+  - `domain()->register(array $request)`
+- Simplified fluent form:
+  - `domain()->register($domain, $registrant, $adminContact, $techContact, $nameservers, $years = 1, $authInfo = null, $extension = null)`
+- In simplified form, nameservers are required and may be provided as:
+  - single hostname string,
+  - list of hostname strings,
+  - or detailed list with `name` + optional `addresses`.
+
 ## `domain:info`
 
 ### Purpose
@@ -126,6 +137,14 @@ Extend validity period.
 - `2201` authorization error
 - `2303` domain not found
 - `2306` policy errors (`curExpDate` mismatch or period too large)
+
+### Client Convenience API (this library)
+
+- Full payload (legacy-compatible):
+  - `domain()->renew(array $request)`
+- Simplified fluent form:
+  - `domain()->renew($domain, $years)`
+- Note: EPP still requires `curExpDate`; the client resolves it internally via domain info before sending renew.
 
 ## `domain:transfer`
 

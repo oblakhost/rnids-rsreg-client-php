@@ -63,6 +63,48 @@ final class HostServiceTest extends TestCase
         self::assertTrue($result['items'][0]['available']);
     }
 
+    public function testCheckAcceptsSingleHostString(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData><host:chkData xmlns:host="urn:ietf:params:xml:ns:host-1.0">'
+                    . '<host:cd><host:name avail="1">ns1.example.rs</host:name></host:cd>'
+                    . '</host:chkData></resData>'
+                    . '<trID><clTRID>HOST-00000001</clTRID><svTRID>SV-1</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new HostService($transport);
+        $result = $service->check('ns1.example.rs');
+
+        self::assertStringContainsString('<host:name>ns1.example.rs</host:name>', $transport->writtenPayload);
+        self::assertSame('ns1.example.rs', $result['items'][0]['name']);
+    }
+
     public function testInfoSendsHostInfoCommandAndMapsResponse(): void
     {
         $transport = new class () implements Transport {
@@ -169,6 +211,56 @@ final class HostServiceTest extends TestCase
         self::assertStringContainsString('<host:create', $transport->writtenPayload);
         self::assertSame('ns1.example.rs', $result['name']);
         self::assertSame('2026-02-01T00:00:00.0Z', $result['createDate']);
+    }
+
+    public function testCreateAcceptsHostnameAndIpArguments(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData><host:creData xmlns:host="urn:ietf:params:xml:ns:host-1.0">'
+                    . '<host:name>ns1.example.rs</host:name>'
+                    . '<host:crDate>2026-02-01T00:00:00.0Z</host:crDate>'
+                    . '</host:creData></resData>'
+                    . '<trID><clTRID>HOST-00000003</clTRID><svTRID>SV-3</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new HostService($transport);
+        $result = $service->create('ns1.example.rs', '192.0.2.1', '2001:db8::1');
+
+        self::assertStringContainsString(
+            '<host:addr ip="v4">192.0.2.1</host:addr>',
+            $transport->writtenPayload,
+        );
+        self::assertStringContainsString(
+            '<host:addr ip="v6">2001:db8::1</host:addr>',
+            $transport->writtenPayload,
+        );
+        self::assertSame('ns1.example.rs', $result['name']);
     }
 
     public function testUpdateSendsHostUpdateCommandAndMapsResponse(): void

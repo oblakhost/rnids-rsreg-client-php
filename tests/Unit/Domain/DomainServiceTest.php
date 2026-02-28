@@ -100,6 +100,50 @@ final class DomainServiceTest extends TestCase
         $service->check([]);
     }
 
+    public function testCheckAcceptsSingleDomainString(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:chkData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:cd><domain:name avail="1">example.rs</domain:name></domain:cd>'
+                    . '</domain:chkData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000001</clTRID><svTRID>SV-1</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $result = $service->check('example.rs');
+
+        self::assertStringContainsString('<domain:name>example.rs</domain:name>', $transport->writtenPayload);
+        self::assertSame('example.rs', $result['items'][0]['name']);
+    }
+
     public function testInfoSendsDomainInfoCommandAndMapsParsedResponse(): void
     {
         $transport = new class () implements Transport {
@@ -416,6 +460,101 @@ final class DomainServiceTest extends TestCase
         ]);
     }
 
+    public function testRegisterAcceptsSimplifiedArgumentsAndRequiresNameservers(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:creData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:crDate>2026-02-01T00:00:00.0Z</domain:crDate>'
+                    . '<domain:exDate>2027-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:creData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000003</clTRID><svTRID>SV-3</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+
+        $result = $service->register(
+            'example.rs',
+            'REG-1',
+            'ADM-1',
+            'TEC-1',
+            [ 'ns1.example.rs', 'ns2.example.rs' ],
+            1,
+            null,
+            [ 'operationMode' => 'normal' ],
+        );
+
+        self::assertStringContainsString(
+            '<domain:hostObj>ns1.example.rs</domain:hostObj>',
+            $transport->writtenPayload,
+        );
+        self::assertStringContainsString(
+            '<domain:contact type="admin">ADM-1</domain:contact>',
+            $transport->writtenPayload,
+        );
+        self::assertSame('example.rs', $result['name']);
+    }
+
+    public function testRegisterSimplifiedThrowsWithoutNameservers(): void
+    {
+        $transport = new class () implements Transport {
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function readFrame(): string
+            {
+                return '';
+            }
+        };
+
+        $service = new DomainService($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Domain register simplified API requires at least one nameserver.');
+
+        $service->register('example.rs', 'REG-1', 'ADM-1', 'TEC-1');
+    }
+
     public function testRenewSendsDomainRenewCommandAndMapsParsedResponse(): void
     {
         $transport = new class () implements Transport {
@@ -522,6 +661,81 @@ final class DomainServiceTest extends TestCase
 
         self::assertStringContainsString('<domain:delete', $transport->writtenPayload);
         self::assertSame([], $result);
+    }
+
+    public function testRenewAcceptsSimplifiedDomainAndYearsAndResolvesCurrentExpirationDate(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            /** @var list<string> */
+            private array $responses;
+
+            public function __construct()
+            {
+                $this->responses = [
+                    '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:infData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:exDate>2027-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:infData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000010</clTRID><svTRID>SV-10</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>',
+                    '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:renData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:exDate>2028-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:renData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000011</clTRID><svTRID>SV-11</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>',
+                ];
+            }
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return \array_shift($this->responses) ?? '';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $result = $service->renew('example.rs', 1);
+
+        self::assertStringContainsString(
+            '<domain:curExpDate>2027-02-01</domain:curExpDate>',
+            $transport->writtenPayload,
+        );
+        self::assertStringContainsString(
+            '<domain:period unit="y">1</domain:period>',
+            $transport->writtenPayload,
+        );
+        self::assertSame('2028-02-01T00:00:00.0Z', $result['expirationDate']);
     }
 
     public function testTransferSendsDomainTransferCommandAndMapsParsedResponse(): void
