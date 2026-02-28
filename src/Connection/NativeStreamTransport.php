@@ -35,7 +35,7 @@ final class NativeStreamTransport implements Transport
 
         $this->assertTlsFilesAreReadable();
 
-        $scheme = null !== $this->tlsConfig ? 'ssl' : 'tcp';
+        $scheme = null !== $this->tlsConfig ? 'tls' : 'tcp';
         $target = \sprintf(
             '%s://%s:%d',
             $scheme,

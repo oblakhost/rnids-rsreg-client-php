@@ -69,7 +69,7 @@ final class NativeStreamTransportTest extends TestCase
         }
     }
 
-    public function testConnectFailureMessageUsesLegacySslSchemeWhenTlsEnabled(): void
+    public function testConnectFailureMessageUsesTlsSchemeWhenTlsEnabled(): void
     {
         $transport = new NativeStreamTransport(
             new ConnectionConfig('invalid.host.for.rnids.test', 700, 1, 1),
@@ -77,7 +77,7 @@ final class NativeStreamTransportTest extends TestCase
         );
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('ssl://invalid.host.for.rnids.test:700');
+        $this->expectExceptionMessage('tls://invalid.host.for.rnids.test:700');
 
         $transport->connect();
     }
