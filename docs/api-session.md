@@ -8,6 +8,19 @@
 
 Sends EPP hello and returns server capabilities.
 
+Response shape:
+
+```php
+array{
+  extensionUris: list<string>,
+  languages: list<string>,
+  objectUris: list<string>,
+  serverDate: string|null,
+  serverId: string|null,
+  versions: list<string>
+}
+```
+
 ### `login(array $request): array{}`
 
 Authenticates a session.
@@ -37,4 +50,15 @@ Request shape:
 
 ```php
 array{messageId?: mixed, operation?: mixed}
+```
+
+Response shape:
+
+```php
+array{
+  count: int|null,
+  message: string|null,
+  messageId: string|null,
+  queueDate: string|null
+}
 ```

@@ -69,7 +69,7 @@ final class DomainService
     /**
      * @param array{names?: mixed}|list<mixed>|non-empty-string $request
      *
-     * @return array{items: list<array{name: string, available: bool, reason: string|null}>}
+     * @return list<array{name: string, available: bool, reason: string|null}>
      */
     public function check(string|array $request): array
     {
@@ -84,16 +84,14 @@ final class DomainService
                 (new DomainCheckResponseParser())->parse($responseXml, $metadata),
         );
 
-        return [
-            'items' => \array_map(
-                static fn(\RNIDS\Domain\Dto\DomainCheckItem $item): array => [
-                    'available' => $item->available,
-                    'name' => $item->name,
-                    'reason' => $item->reason,
-                ],
-                $response->items,
-            ),
-        ];
+        return \array_map(
+            static fn(\RNIDS\Domain\Dto\DomainCheckItem $item): array => [
+                'available' => $item->available,
+                'name' => $item->name,
+                'reason' => $item->reason,
+            ],
+            $response->items,
+        );
     }
 
     /**
@@ -192,6 +190,13 @@ final class DomainService
      * @param non-empty-string|null $techContact
      * @param non-empty-string|array<int, mixed>|null $nameservers
      * @param int|null $years
+     * @param array{
+     *   isWhoisPrivacy?: mixed,
+     *   operationMode?: mixed,
+     *   notifyAdmin?: mixed,
+     *   dnsSec?: mixed,
+     *   remark?: mixed
+     * }|null $extension
      *
      * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
      */

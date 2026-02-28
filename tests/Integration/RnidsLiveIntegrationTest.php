@@ -87,9 +87,9 @@ final class RnidsLiveIntegrationTest extends TestCase
         $result = self::client()->domain()->check([ 'names' => [ $domain ] ]);
 
         self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-        self::assertCount(1, $result['items']);
-        self::assertSame($domain, $result['items'][0]['name']);
-        self::assertIsBool($result['items'][0]['available']);
+        self::assertCount(1, $result);
+        self::assertSame($domain, $result[0]['name']);
+        self::assertIsBool($result[0]['available']);
     }
 
     /**

@@ -59,8 +59,8 @@ final class HostServiceTest extends TestCase
         $result = $service->check([ 'names' => [ 'ns1.example.rs' ] ]);
 
         self::assertStringContainsString('<host:name>ns1.example.rs</host:name>', $transport->writtenPayload);
-        self::assertSame('ns1.example.rs', $result['items'][0]['name']);
-        self::assertTrue($result['items'][0]['available']);
+        self::assertSame('ns1.example.rs', $result[0]['name']);
+        self::assertTrue($result[0]['available']);
     }
 
     public function testCheckAcceptsSingleHostString(): void
@@ -102,7 +102,7 @@ final class HostServiceTest extends TestCase
         $result = $service->check('ns1.example.rs');
 
         self::assertStringContainsString('<host:name>ns1.example.rs</host:name>', $transport->writtenPayload);
-        self::assertSame('ns1.example.rs', $result['items'][0]['name']);
+        self::assertSame('ns1.example.rs', $result[0]['name']);
     }
 
     public function testInfoSendsHostInfoCommandAndMapsResponse(): void

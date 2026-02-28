@@ -61,9 +61,9 @@ final class DomainServiceTest extends TestCase
         $result = $service->check([ 'names' => [ 'example.rs' ] ]);
 
         self::assertStringContainsString('<domain:name>example.rs</domain:name>', $transport->writtenPayload);
-        self::assertCount(1, $result['items']);
-        self::assertSame('example.rs', $result['items'][0]['name']);
-        self::assertTrue($result['items'][0]['available']);
+        self::assertCount(1, $result);
+        self::assertSame('example.rs', $result[0]['name']);
+        self::assertTrue($result[0]['available']);
     }
 
     public function testCheckThrowsForMissingNames(): void
@@ -141,7 +141,7 @@ final class DomainServiceTest extends TestCase
         $result = $service->check('example.rs');
 
         self::assertStringContainsString('<domain:name>example.rs</domain:name>', $transport->writtenPayload);
-        self::assertSame('example.rs', $result['items'][0]['name']);
+        self::assertSame('example.rs', $result[0]['name']);
     }
 
     public function testInfoSendsDomainInfoCommandAndMapsParsedResponse(): void
