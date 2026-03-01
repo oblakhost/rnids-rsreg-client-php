@@ -10,6 +10,13 @@ This package provides a fluent, RNIDS-first API with deterministic XML generatio
 composer require rnids/rsreg-epp-client
 ```
 
+## Requirements
+
+- PHP 8.1+
+- `ext-json`
+- Network access to RNIDS/RSreg EPP endpoint
+- TLS certificates configured in client config when required by your environment
+
 ## Quick Start
 
 ```php
@@ -34,6 +41,20 @@ $meta = $client->responseMeta();
 
 $client->close();
 ```
+
+Minimum config keys for first run:
+
+- `host`
+- `username`
+- `password`
+
+Common optional keys:
+
+- `port` (default `700`)
+- `language` (default `en`)
+- `version` (default `1.0`)
+- `objectUris`, `extensionUris`
+- `tls` options (`localCertPath`, `localPkPath`, `passphrase`, `caFile`, `verifyPeer`, `verifyPeerName`, `allowSelfSigned`, `peerName`)
 
 If you need explicit lifecycle control:
 

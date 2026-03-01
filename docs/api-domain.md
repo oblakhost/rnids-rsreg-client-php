@@ -54,14 +54,52 @@ array{
 }
 ```
 
-### `register(string|array $request, ...): array`
+### `register(string|array $request, ?string $registrant = null, ?string $adminContact = null, ?string $techContact = null, string|array|null $nameservers = null, ?int $years = 1, ?string $authInfo = null, ?array $extension = null): array`
 
 Registers a domain.
 
-Supports full request payload and simplified fluent form:
+Supports full request payload and simplified fluent form.
+
+Full request shape:
 
 ```php
-$domain->register($name, $registrant, $adminContact, $techContact, $nameservers, $years);
+array{
+  name?: mixed,
+  period?: mixed,
+  periodUnit?: mixed,
+  nameservers?: mixed,
+  registrant?: mixed,
+  contacts?: mixed,
+  authInfo?: mixed,
+  extension?: array{
+    isWhoisPrivacy?: mixed,
+    operationMode?: mixed,
+    notifyAdmin?: mixed,
+    dnsSec?: mixed,
+    remark?: mixed
+  }|mixed
+}|non-empty-string
+```
+
+Simplified form:
+
+```php
+$domain->register(
+    'example.rs',
+    'REG-123',
+    'OBL-admin',
+    'OBL-tech',
+    ['ns1.example.rs', 'ns2.example.rs'],
+    1,
+    'auth-code-123',
+    [
+        'isWhoisPrivacy' => true,
+        'operationMode' => 'direct',
+        'notifyAdmin' => false,
+        'dnsSec' => true,
+        'remark' => 'Created via API',
+    ],
+);
 ```
 
 Response shape:
@@ -104,7 +142,14 @@ array{
     statuses?: list<non-empty-string>
   },
   registrant?: mixed,
-  authInfo?: mixed
+  authInfo?: mixed,
+  extension?: array{
+    remark?: mixed,
+    isWhoisPrivacy?: mixed,
+    operationMode?: mixed,
+    notifyAdmin?: mixed,
+    dnsSec?: mixed
+  }|mixed
 }
 ```
 
@@ -117,6 +162,18 @@ Deletes a domain.
 ### `transfer(array $request): array`
 
 Handles transfer lifecycle operations (`request|query|cancel|approve|reject`).
+
+Request shape:
+
+```php
+array{
+  operation?: mixed,
+  name?: mixed,
+  period?: mixed,
+  periodUnit?: mixed,
+  authInfo?: mixed
+}
+```
 
 Response shape:
 
