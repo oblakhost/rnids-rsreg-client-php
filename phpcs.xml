@@ -5,6 +5,9 @@
   <rule ref="PHPCompatibility"/>
   <rule ref="Oblak-Slevomat"/>
   <rule ref="PSR12"/>
+  <rule ref="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming">
+    <exclude name="SlevomatCodingStandard.Classes.SuperfluousExceptionNaming.SuperfluousSuffix"/>
+  </rule>
 
   <file>src/</file>
 
