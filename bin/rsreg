@@ -93,7 +93,23 @@ function usageAndFail(): void
     fail(
         <<<'USAGE'
 Usage:
+  vendor/bin/rsreg session:hello
+  vendor/bin/rsreg session:poll
+
+  vendor/bin/rsreg domain:check <comma-separated-domains>
   vendor/bin/rsreg domain:info <domainname>
+  vendor/bin/rsreg domain:register <json-payload>
+  vendor/bin/rsreg domain:renew <json-payload>
+  vendor/bin/rsreg domain:update <json-payload>
+  vendor/bin/rsreg domain:delete <domainname>
+  vendor/bin/rsreg domain:transfer <json-payload>
+
+  vendor/bin/rsreg contact:check <comma-separated-ids>
+  vendor/bin/rsreg contact:info <contact-id>
+  vendor/bin/rsreg contact:create <json-payload>
+  vendor/bin/rsreg contact:update <json-payload>
+  vendor/bin/rsreg contact:delete <contact-id>
+
   vendor/bin/rsreg host:check <comma-separated-hosts>
   vendor/bin/rsreg host:info <hostname>
   vendor/bin/rsreg host:create <json-payload>
@@ -101,7 +117,23 @@ Usage:
   vendor/bin/rsreg host:delete <hostname>
 
 Examples:
+  vendor/bin/rsreg session:hello
+  vendor/bin/rsreg session:poll
+
+  vendor/bin/rsreg domain:check example.rs,test.rs
   vendor/bin/rsreg domain:info example.rs
+  vendor/bin/rsreg domain:register '{"name":"example.rs","registrant":"CID-REG","years":1}'
+  vendor/bin/rsreg domain:renew '{"name":"example.rs","years":1}'
+  vendor/bin/rsreg domain:update '{"name":"example.rs","add":{"statuses":["clientHold"]}}'
+  vendor/bin/rsreg domain:delete example.rs
+  vendor/bin/rsreg domain:transfer '{"name":"example.rs","authInfo":"secret","type":"request"}'
+
+  vendor/bin/rsreg contact:check CID-1,CID-2
+  vendor/bin/rsreg contact:info CID-12345
+  vendor/bin/rsreg contact:create '{"id":"CID-NEW","postalInfo":{"name":"John Doe","organization":"Acme","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"voice":"+381.112345678","email":"john@example.rs","authInfo":"secret"}'
+  vendor/bin/rsreg contact:update '{"id":"CID-12345","change":{"email":"new@example.rs"}}'
+  vendor/bin/rsreg contact:delete CID-12345
+
   vendor/bin/rsreg host:check ns1.example.rs,ns2.example.rs
   vendor/bin/rsreg host:info ns1.example.rs
   vendor/bin/rsreg host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'
@@ -138,6 +170,40 @@ function parseHostNamesList(string $raw): array
 
     if ([] === $chunks) {
         fail('host:check requires at least one non-empty host name.', 2);
+    }
+
+    return array_values($chunks);
+}
+
+/**
+ * @return list<string>
+ */
+function parseDomainNamesList(string $raw): array
+{
+    $chunks = array_filter(
+        array_map('trim', explode(',', $raw)),
+        static fn(string $value): bool => '' !== $value,
+    );
+
+    if ([] === $chunks) {
+        fail('domain:check requires at least one non-empty domain name.', 2);
+    }
+
+    return array_values($chunks);
+}
+
+/**
+ * @return list<string>
+ */
+function parseContactIdsList(string $raw): array
+{
+    $chunks = array_filter(
+        array_map('trim', explode(',', $raw)),
+        static fn(string $value): bool => '' !== $value,
+    );
+
+    if ([] === $chunks) {
+        fail('contact:check requires at least one non-empty contact id.', 2);
     }
 
     return array_values($chunks);
@@ -223,40 +289,86 @@ function clientConfig(): array
     ];
 }
 
-if ($argc < 3) {
+/** Commands that require no positional argument beyond the command name itself. */
+$noArgCommands = ['session:hello', 'session:poll'];
+
+$command = $argc >= 2 ? trim((string) $argv[1]) : '';
+
+if ('' === $command) {
     usageAndFail();
 }
 
-$command = trim((string) $argv[1]);
-$argument = (string) $argv[2];
+$requiresArg = !in_array($command, $noArgCommands, true);
+
+if ($requiresArg && $argc < 3) {
+    usageAndFail();
+}
+
+$argument = $argc >= 3 ? (string) $argv[2] : '';
 
 try {
     $config = clientConfig();
     $tlsConfig = $config['tls'];
 
     if (getenv('RNIDS_EPP_TLS_DEBUG') === '1') {
-      fwrite(
-          STDERR,
-          sprintf(
-              "TLS debug: cert=%s ca=%s allowSelfSigned=%s verifyPeer=%s verifyPeerName=%s peerName=%s\n",
-              $tlsConfig['clientCertificatePath'],
-              $tlsConfig['caFilePath'],
-              $tlsConfig['allowSelfSigned'] ? 'true' : 'false',
-              $tlsConfig['verifyPeer'] ? 'true' : 'false',
-              $tlsConfig['verifyPeerName'] ? 'true' : 'false',
-              isset($tlsConfig['peerName']) ? (string) $tlsConfig['peerName'] : '<default-host>',
-          ),
-      );
+        fwrite(
+            STDERR,
+            sprintf(
+                "TLS debug: cert=%s ca=%s allowSelfSigned=%s verifyPeer=%s verifyPeerName=%s peerName=%s\n",
+                $tlsConfig['clientCertificatePath'],
+                $tlsConfig['caFilePath'],
+                $tlsConfig['allowSelfSigned'] ? 'true' : 'false',
+                $tlsConfig['verifyPeer'] ? 'true' : 'false',
+                $tlsConfig['verifyPeerName'] ? 'true' : 'false',
+                isset($tlsConfig['peerName']) ? (string) $tlsConfig['peerName'] : '<default-host>',
+            ),
+        );
     }
 
     $client = RNIDS\Client::ready($config);
 
     $response = match ($command) {
-        'domain:info' => $client->domain()->info(trim($argument)),
-        'host:check' => $client->host()->check([
+        // Session
+        'session:hello'    => $client->session()->hello(),
+        'session:poll'     => $client->session()->poll(),
+
+        // Domain
+        'domain:check'    => $client->domain()->check([
+            'names' => parseDomainNamesList($argument),
+        ]),
+        'domain:info'     => $client->domain()->info(trim($argument)),
+        'domain:register' => $client->domain()->register(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'domain:renew'    => $client->domain()->renew(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'domain:update'   => $client->domain()->update(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'domain:delete'   => $client->domain()->delete(trim($argument)),
+        'domain:transfer' => $client->domain()->transfer(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+
+        // Contact
+        'contact:check'  => $client->contact()->check([
+            'ids' => parseContactIdsList($argument),
+        ]),
+        'contact:info'   => $client->contact()->info(trim($argument)),
+        'contact:create' => $client->contact()->create(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'contact:update' => $client->contact()->update(
+            decodeJsonObjectArgument($command, $argument),
+        ),
+        'contact:delete' => $client->contact()->delete(trim($argument)),
+
+        // Host
+        'host:check'  => $client->host()->check([
             'names' => parseHostNamesList($argument),
         ]),
-        'host:info' => $client->host()->info(trim($argument)),
+        'host:info'   => $client->host()->info(trim($argument)),
         'host:create' => $client->host()->create(
             decodeJsonObjectArgument($command, $argument),
         ),
@@ -264,6 +376,7 @@ try {
             decodeJsonObjectArgument($command, $argument),
         ),
         'host:delete' => $client->host()->delete(trim($argument)),
+
         default => usageAndFail(),
     };
 
