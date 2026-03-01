@@ -234,18 +234,20 @@ try {
     $config = clientConfig();
     $tlsConfig = $config['tls'];
 
-    fwrite(
-        STDERR,
-        sprintf(
-            "TLS debug: cert=%s ca=%s allowSelfSigned=%s verifyPeer=%s verifyPeerName=%s peerName=%s\n",
-            $tlsConfig['clientCertificatePath'],
-            $tlsConfig['caFilePath'],
-            $tlsConfig['allowSelfSigned'] ? 'true' : 'false',
-            $tlsConfig['verifyPeer'] ? 'true' : 'false',
-            $tlsConfig['verifyPeerName'] ? 'true' : 'false',
-            isset($tlsConfig['peerName']) ? (string) $tlsConfig['peerName'] : '<default-host>',
-        ),
-    );
+    if (getenv('RNIDS_EPP_TLS_DEBUG') === '1') {
+      fwrite(
+          STDERR,
+          sprintf(
+              "TLS debug: cert=%s ca=%s allowSelfSigned=%s verifyPeer=%s verifyPeerName=%s peerName=%s\n",
+              $tlsConfig['clientCertificatePath'],
+              $tlsConfig['caFilePath'],
+              $tlsConfig['allowSelfSigned'] ? 'true' : 'false',
+              $tlsConfig['verifyPeer'] ? 'true' : 'false',
+              $tlsConfig['verifyPeerName'] ? 'true' : 'false',
+              isset($tlsConfig['peerName']) ? (string) $tlsConfig['peerName'] : '<default-host>',
+          ),
+      );
+    }
 
     $client = RNIDS\Client::ready($config);
 
