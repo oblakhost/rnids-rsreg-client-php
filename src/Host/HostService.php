@@ -33,6 +33,10 @@ final class HostService
 
     private HostRequestFactory $requestFactory;
 
+    private HostInputNormalizer $inputNormalizer;
+
+    private HostResponseMapper $responseMapper;
+
     private HostCheckRequestBuilder $checkRequestBuilder;
 
     private HostCheckResponseParser $checkResponseParser;
@@ -61,6 +65,8 @@ final class HostService
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
      * @param HostRequestFactory|null $requestFactory Optional request DTO factory override.
      * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
+     * @param HostInputNormalizer|null $inputNormalizer Optional input normalizer override.
+     * @param HostResponseMapper|null $responseMapper Optional response mapper override.
      */
     public function __construct(
         Transport $transport,
@@ -68,10 +74,14 @@ final class HostService
         ?ClTridGenerator $tridGenerator = null,
         ?HostRequestFactory $requestFactory = null,
         ?LastResponseMetadata $lastResponseMetadata = null,
+        ?HostInputNormalizer $inputNormalizer = null,
+        ?HostResponseMapper $responseMapper = null,
     ) {
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('HOST');
         $this->requestFactory = $requestFactory ?? new HostRequestFactory();
+        $this->inputNormalizer = $inputNormalizer ?? new HostInputNormalizer();
+        $this->responseMapper = $responseMapper ?? new HostResponseMapper();
         $this->checkRequestBuilder = new HostCheckRequestBuilder();
         $this->checkResponseParser = new HostCheckResponseParser();
         $this->infoRequestBuilder = new HostInfoRequestBuilder();
@@ -95,7 +105,7 @@ final class HostService
     public function check(string|array $request): array
     {
         $xml = $this->checkRequestBuilder->build(
-            $this->requestFactory->checkFromArray($this->normalizeCheckRequest($request)),
+            $this->requestFactory->checkFromArray($this->inputNormalizer->normalizeCheckRequest($request)),
             $this->tridGenerator->nextId(),
         );
 
@@ -105,14 +115,7 @@ final class HostService
                 $this->checkResponseParser->parse($responseXml, $metadata),
         );
 
-        return \array_map(
-            static fn(\RNIDS\Host\Dto\HostCheckItem $item): array => [
-                'available' => $item->available,
-                'name' => $item->name,
-                'reason' => $item->reason,
-            ],
-            $response->items,
-        );
+        return $this->responseMapper->mapCheckResponse($response);
     }
 
     /**
@@ -136,7 +139,7 @@ final class HostService
     public function info(string $name): array
     {
         $xml = $this->infoRequestBuilder->build(
-            new HostInfoRequest($this->requireHostName($name)),
+            new HostInfoRequest($this->inputNormalizer->requireHostName($name)),
             $this->tridGenerator->nextId(),
         );
 
@@ -146,30 +149,7 @@ final class HostService
                 $this->infoResponseParser->parse($responseXml, $metadata),
         );
 
-        return [
-            'addresses' => \array_map(
-                static fn(\RNIDS\Host\Dto\HostAddress $address): array => [
-                        'address' => $address->address,
-                        'ipVersion' => $address->ipVersion,
-                    ],
-                $response->addresses,
-            ),
-            'clientId' => $response->clientId,
-            'createClientId' => $response->createClientId,
-            'createDate' => $response->createDate,
-            'name' => $response->name,
-            'roid' => $response->roid,
-            'statuses' => \array_map(
-                static fn(\RNIDS\Host\Dto\HostStatus $status): array => [
-                        'description' => $status->description,
-                        'value' => $status->value,
-                    ],
-                $response->statuses,
-            ),
-            'transferDate' => $response->transferDate,
-            'updateClientId' => $response->updateClientId,
-            'updateDate' => $response->updateDate,
-        ];
+        return $this->responseMapper->mapInfoResponse($response);
     }
 
     /**
@@ -183,7 +163,7 @@ final class HostService
      */
     public function create(string|array $request, ?string $ipv4 = null, ?string $ipv6 = null): array
     {
-        $normalizedRequest = $this->normalizeCreateRequest($request, $ipv4, $ipv6);
+        $normalizedRequest = $this->inputNormalizer->normalizeCreateRequest($request, $ipv4, $ipv6);
 
         $xml = $this->createRequestBuilder->build(
             $this->requestFactory->createFromArray($normalizedRequest),
@@ -196,10 +176,7 @@ final class HostService
                 $this->createResponseParser->parse($responseXml, $metadata),
         );
 
-        return [
-            'createDate' => $response->createDate,
-            'name' => $response->name,
-        ];
+        return $this->responseMapper->mapCreateResponse($response);
     }
 
     /**
@@ -216,13 +193,13 @@ final class HostService
             $this->tridGenerator->nextId(),
         );
 
-        $response = $this->executor->execute(
+        $this->executor->execute(
             $xml,
             fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
                 $this->updateResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
+        return $this->responseMapper->mapEmptyResponse();
     }
 
     /**
@@ -235,124 +212,16 @@ final class HostService
     public function delete(string $name): array
     {
         $xml = $this->deleteRequestBuilder->build(
-            new HostDeleteRequest($this->requireHostName($name)),
+            new HostDeleteRequest($this->inputNormalizer->requireHostName($name)),
             $this->tridGenerator->nextId(),
         );
 
-        $response = $this->executor->execute(
+        $this->executor->execute(
             $xml,
             fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
                 $this->deleteResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
-    }
-
-    private function requireHostName(string $name): string
-    {
-        if ('' === \trim($name)) {
-            throw new \InvalidArgumentException('Host name must be a non-empty string.');
-        }
-
-        return $name;
-    }
-
-    /**
-     * @param array{names?: mixed}|list<mixed>|non-empty-string $request
-     *
-     * @return array{names: list<string>}
-     */
-    private function normalizeCheckRequest(string|array $request): array
-    {
-        if (\is_string($request)) {
-            return [ 'names' => [ $this->requireHostName($request) ] ];
-        }
-
-        if (isset($request['names'])) {
-            return [ 'names' => $request['names'] ];
-        }
-
-        if ([] === $request) {
-            return [ 'names' => [] ];
-        }
-
-        return [
-            'names' => \array_values(\array_map(
-                fn(mixed $name): string => $this->requireHostNameFromMixed($name),
-                $request,
-            )),
-        ];
-    }
-
-    private function requireHostNameFromMixed(mixed $name): string
-    {
-        if (!\is_string($name)) {
-            throw new \InvalidArgumentException(
-                'Host check request key "names" must contain only non-empty strings.',
-            );
-        }
-
-        return $this->requireHostName($name);
-    }
-
-    /**
-     * @param array{name?: mixed, addresses?: mixed}|non-empty-string $request
-     *
-     * @return array{name: string, addresses: list<array{address: string, ipVersion: string}>}|array<string, mixed>
-     */
-    private function normalizeCreateRequest(string|array $request, ?string $ipv4, ?string $ipv6): array
-    {
-        if (\is_array($request)) {
-            return $request;
-        }
-
-        $addresses = $this->buildCreateAddresses($ipv4, $ipv6);
-
-        return [
-            'addresses' => $addresses,
-            'name' => $this->requireHostName($request),
-        ];
-    }
-
-    /**
-     * @return list<array{address: string, ipVersion: string}>
-     */
-    private function buildCreateAddresses(?string $ipv4, ?string $ipv6): array
-    {
-        $addresses = [];
-
-        $this->appendAddress(
-            $addresses,
-            $ipv4,
-            'v4',
-            'Host create ipv4 must be a non-empty string when provided.',
-        );
-        $this->appendAddress(
-            $addresses,
-            $ipv6,
-            'v6',
-            'Host create ipv6 must be a non-empty string when provided.',
-        );
-
-        return $addresses;
-    }
-
-    /**
-     * @param list<array{address: string, ipVersion: string}> $addresses
-     */
-    private function appendAddress(array &$addresses, ?string $address, string $ipVersion, string $error): void
-    {
-        if (null === $address) {
-            return;
-        }
-
-        if ('' === \trim($address)) {
-            throw new \InvalidArgumentException($error);
-        }
-
-        $addresses[] = [
-            'address' => $address,
-            'ipVersion' => $ipVersion,
-        ];
+        return $this->responseMapper->mapEmptyResponse();
     }
 }
