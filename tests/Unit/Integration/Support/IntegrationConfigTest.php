@@ -130,6 +130,19 @@ final class IntegrationConfigTest extends TestCase
         self::assertFalse($config['tls']['verifyPeerName']);
     }
 
+    public function testClientConfigUsesConfiguredHostAndPortWhenProvided(): void
+    {
+        $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+        $this->setEnv('RNIDS_EPP_HOST', '127.0.0.1');
+        $this->setEnv('RNIDS_EPP_PORT', '1700');
+
+        $config = IntegrationConfig::clientConfig();
+
+        self::assertSame('127.0.0.1', $config['host']);
+        self::assertSame(1700, $config['port']);
+    }
+
     public function testEnsureReadyOrFailThrowsWhenUsernameMissing(): void
     {
         $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
@@ -159,7 +172,30 @@ final class IntegrationConfigTest extends TestCase
 
         IntegrationConfig::ensureReadyOrFail();
 
-        self::assertTrue(true);
+        self::assertSame('user-1', IntegrationConfig::clientConfig()['username']);
+    }
+
+    public function testEnsureReadyOrFailThrowsForInvalidPortEnvironmentValue(): void
+    {
+        $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+        $this->setEnv('RNIDS_EPP_PORT', '70000');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.');
+
+        IntegrationConfig::ensureReadyOrFail();
+    }
+
+    public function testLiveReadinessFailureReasonIncludesMissingCredentialSignal(): void
+    {
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+        $this->setEnv('RNIDS_EPP_USERNAME', '');
+
+        $reason = IntegrationConfig::liveReadinessFailureReason();
+
+        self::assertIsString($reason);
+        self::assertStringContainsString('missing RNIDS_EPP_USERNAME', $reason);
     }
 
     protected function tearDown(): void

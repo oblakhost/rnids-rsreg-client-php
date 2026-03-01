@@ -11,6 +11,7 @@ final class IntegrationConfig
     private const DEFAULT_HOST = 'epp-test.rnids.rs';
 
     private const DEFAULT_PORT = 700;
+    private const DEFAULT_CONNECTIVITY_TIMEOUT_SECONDS = 2.0;
 
     private const DEFAULT_CERT_PASSWORD = '12345';
 
@@ -61,9 +62,9 @@ final class IntegrationConfig
     public static function clientConfig(): array
     {
         return [
-            'host' => self::DEFAULT_HOST,
+            'host' => self::host(),
             'password' => self::requiredEnv('RNIDS_EPP_PASSWORD'),
-            'port' => self::DEFAULT_PORT,
+            'port' => self::port(),
             'tls' => [
                 'allowSelfSigned' => true,
                 'caFilePath' => self::caCertificatePath(),
@@ -93,6 +94,46 @@ final class IntegrationConfig
         self::ensureEnvOrFail('RNIDS_EPP_PASSWORD');
         self::ensureFileOrFail(self::clientCertificatePath(), 'RNIDS client certificate');
         self::ensureFileOrFail(self::caCertificatePath(), 'RNIDS CA certificate');
+        self::port();
+    }
+
+    public static function liveReadinessFailureReason(): ?string
+    {
+        $issues = [];
+        $host = self::host();
+        $port = self::DEFAULT_PORT;
+
+        foreach ([ 'RNIDS_EPP_USERNAME', 'RNIDS_EPP_PASSWORD' ] as $requiredEnv) {
+            if (null === self::nonEmptyEnvOrNull($requiredEnv)) {
+                $issues[] = \sprintf('missing %s', $requiredEnv);
+            }
+        }
+
+        try {
+            $port = self::port();
+        } catch (\RuntimeException $runtimeException) {
+            $issues[] = $runtimeException->getMessage();
+        }
+
+        if (!self::pathIsReadableFile(self::clientCertificatePath())) {
+            $issues[] = \sprintf('client certificate not readable at "%s"', self::clientCertificatePath());
+        }
+
+        if (!self::pathIsReadableFile(self::caCertificatePath())) {
+            $issues[] = \sprintf('CA certificate not readable at "%s"', self::caCertificatePath());
+        }
+
+        if (!self::isHostResolvable($host)) {
+            $issues[] = \sprintf('host "%s" cannot be resolved', $host);
+        } elseif (!self::isTcpEndpointReachable($host, $port, self::DEFAULT_CONNECTIVITY_TIMEOUT_SECONDS)) {
+            $issues[] = \sprintf('cannot reach %s:%d over TCP', $host, $port);
+        }
+
+        if ([] === $issues) {
+            return null;
+        }
+
+        return 'Skipping RNIDS live integration tests: ' . \implode('; ', $issues) . '.';
     }
 
     public static function ensureRegisterReadyOrFail(): void
@@ -356,5 +397,71 @@ final class IntegrationConfig
         }
 
         return $value;
+    }
+
+    private static function host(): string
+    {
+        return self::nonEmptyEnvOrNull('RNIDS_EPP_HOST') ?? self::DEFAULT_HOST;
+    }
+
+    private static function port(): int
+    {
+        $port = self::nonEmptyEnvOrNull('RNIDS_EPP_PORT');
+
+        if (null === $port) {
+            return self::DEFAULT_PORT;
+        }
+
+        if (!\preg_match('/^\d+$/', $port)) {
+            throw new \RuntimeException('Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.');
+        }
+
+        $parsedPort = (int) $port;
+
+        if ($parsedPort < 1 || $parsedPort > 65535) {
+            throw new \RuntimeException('Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.');
+        }
+
+        return $parsedPort;
+    }
+
+    private static function pathIsReadableFile(string $path): bool
+    {
+        return \is_file($path) && \is_readable($path);
+    }
+
+    private static function isHostResolvable(string $host): bool
+    {
+        if ('' === \trim($host)) {
+            return false;
+        }
+
+        if (\filter_var($host, \FILTER_VALIDATE_IP) !== false) {
+            return true;
+        }
+
+        return \gethostbyname($host) !== $host;
+    }
+
+    private static function isTcpEndpointReachable(string $host, int $port, float $timeoutSeconds): bool
+    {
+        $flags = \STREAM_CLIENT_CONNECT;
+        $context = \stream_context_create([ 'ssl' => [ 'verify_peer' => false, 'verify_peer_name' => false ] ]);
+        $socket = @\stream_socket_client(
+            \sprintf('tcp://%s:%d', $host, $port),
+            $errorCode,
+            $errorMessage,
+            $timeoutSeconds,
+            $flags,
+            $context,
+        );
+
+        if (false === $socket) {
+            return false;
+        }
+
+        \fclose($socket);
+
+        return true;
     }
 }

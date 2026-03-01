@@ -15,10 +15,16 @@ use Tests\Integration\Support\IntegrationConfig;
 final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
 {
     private static ?Client $client = null;
+    private static ?string $readinessFailure = null;
 
     public static function setUpBeforeClass(): void
     {
-        IntegrationConfig::ensureReadyOrFail();
+        self::$readinessFailure = IntegrationConfig::liveReadinessFailureReason();
+
+        if (null !== self::$readinessFailure) {
+            return;
+        }
+
         self::$client = Client::ready(IntegrationConfig::clientConfig());
     }
 
@@ -28,6 +34,15 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         self::$client = null;
 
         parent::tearDownAfterClass();
+    }
+
+    protected function setUp(): void
+    {
+        if (null !== self::$readinessFailure) {
+            self::markTestSkipped(self::$readinessFailure);
+        }
+
+        parent::setUp();
     }
 
     #[Group('contact-lifecycle')]
