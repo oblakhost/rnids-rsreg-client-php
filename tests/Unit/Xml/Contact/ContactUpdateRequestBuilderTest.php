@@ -21,7 +21,7 @@ final class ContactUpdateRequestBuilderTest extends TestCase
 
         $xml = $builder->build(
             new ContactUpdateRequest(
-                'C-1',
+                'OBL-C-1',
                 [ 'ok' ],
                 [ 'linked' ],
                 new ContactPostalInfo(
@@ -35,7 +35,14 @@ final class ContactUpdateRequestBuilderTest extends TestCase
                 'updated@example.rs',
                 'pw2',
                 0,
-                new ContactExtension('999', null, null, null, null, null),
+                new ContactExtension(
+                    '999',
+                    'Object Creation provided by Oblak Solutions.',
+                    null,
+                    null,
+                    null,
+                    null,
+                ),
             ),
             'TRID-1',
         );
@@ -44,10 +51,51 @@ final class ContactUpdateRequestBuilderTest extends TestCase
             '<contact:update xmlns:contact="urn:ietf:params:xml:ns:contact-1.0">',
             $xml,
         );
+        self::assertStringContainsString('<contact:id>OBL-C-1</contact:id>', $xml);
         self::assertStringContainsString('<contact:add><contact:status s="ok"/></contact:add>', $xml);
         self::assertStringContainsString('<contact:rem><contact:status s="linked"/></contact:rem>', $xml);
         self::assertStringContainsString('<contact:chg>', $xml);
         self::assertStringContainsString('<contact:email>updated@example.rs</contact:email>', $xml);
         self::assertStringContainsString('<contactExt:ident>999</contactExt:ident>', $xml);
+        self::assertStringContainsString(
+            '<contactExt:identDescription>Object Creation provided by Oblak Solutions.</contactExt:identDescription>',
+            $xml,
+        );
+    }
+
+    public function testBuildSerializesExtensionWhenOnlyPolicyCommentIsPresent(): void
+    {
+        $builder = new ContactUpdateRequestBuilder();
+
+        $xml = $builder->build(
+            new ContactUpdateRequest(
+                'OBL-C-2',
+                [],
+                [],
+                null,
+                null,
+                null,
+                'updated@example.rs',
+                null,
+                null,
+                new ContactExtension(
+                    null,
+                    'Object Creation provided by Oblak Solutions.',
+                    null,
+                    null,
+                    null,
+                    null,
+                ),
+            ),
+            'TRID-2',
+        );
+
+        self::assertStringContainsString('<contact:id>OBL-C-2</contact:id>', $xml);
+        self::assertStringContainsString('<extension><contactExt:contact-ext', $xml);
+        self::assertStringContainsString(
+            '<contactExt:identDescription>Object Creation provided by Oblak Solutions.</contactExt:identDescription>',
+            $xml,
+        );
+        self::assertStringNotContainsString('<contactExt:ident>', $xml);
     }
 }
