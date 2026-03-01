@@ -22,7 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
+        php: ["8.1", "8.2", "8.3", "8.4", "8.5"]
 
     steps:
       - name: Checkout
@@ -60,3 +60,44 @@ jobs:
           files: build/coverage.xml
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  integration-live:
+    name: Integration (live RNIDS)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    if: ${{ secrets.RNIDS_EPP_USER != '' && secrets.RNIDS_EPP_PASS != '' && secrets.RNIDS_EPP_CERT != '' && secrets.RNIDS_EPP_ROOT != '' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-8.1-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.1-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Prepare RNIDS certificate fixtures
+        run: |
+          mkdir -p tests/fixtures
+          printf '%s' '${{ secrets.RNIDS_EPP_CERT }}' > tests/fixtures/client.pem
+          printf '%s' '${{ secrets.RNIDS_EPP_ROOT }}' > tests/fixtures/root.pem
+          chmod 600 tests/fixtures/client.pem tests/fixtures/root.pem
+
+      - name: Run live integration tests
+        env:
+          RNIDS_EPP_USERNAME: ${{ secrets.RNIDS_EPP_USER }}
+          RNIDS_EPP_PASSWORD: ${{ secrets.RNIDS_EPP_PASS }}
+          RNIDS_EPP_CLIENT_CERT_PATH: tests/fixtures/client.pem
+          RNIDS_EPP_CA_CERT_PATH: tests/fixtures/root.pem
+        run: composer test:live
