@@ -143,22 +143,22 @@ final class Client
             ->buildTransport();
 
         $this->lastResponseMetadata = new LastResponseMetadata();
-        $this->sessionService = new SessionService($this->transport, null, null, $this->lastResponseMetadata);
+        $this->sessionService = new SessionService(
+            transport: $this->transport,
+            lastResponseMetadata: $this->lastResponseMetadata,
+        );
         $this->domainService = new DomainService(
-            $this->transport,
-            null,
-            null,
-            null,
-            $this->lastResponseMetadata,
+            transport: $this->transport,
+            lastResponseMetadata: $this->lastResponseMetadata,
         );
         $this->contactService = new ContactService(
-            $this->transport,
-            null,
-            null,
-            null,
-            $this->lastResponseMetadata,
+            transport: $this->transport,
+            lastResponseMetadata: $this->lastResponseMetadata,
         );
-        $this->hostService = new HostService($this->transport, null, null, null, $this->lastResponseMetadata);
+        $this->hostService = new HostService(
+            transport: $this->transport,
+            lastResponseMetadata: $this->lastResponseMetadata,
+        );
         $this->transport->connect();
         $this->sessionService->hello();
         $this->sessionService->login([

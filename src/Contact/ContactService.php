@@ -33,6 +33,26 @@ final class ContactService
 
     private ContactRequestFactory $requestFactory;
 
+    private ContactCheckRequestBuilder $checkRequestBuilder;
+
+    private ContactCheckResponseParser $checkResponseParser;
+
+    private ContactCreateRequestBuilder $createRequestBuilder;
+
+    private ContactCreateResponseParser $createResponseParser;
+
+    private ContactInfoRequestBuilder $infoRequestBuilder;
+
+    private ContactInfoResponseParser $infoResponseParser;
+
+    private ContactUpdateRequestBuilder $updateRequestBuilder;
+
+    private ContactUpdateResponseParser $updateResponseParser;
+
+    private ContactDeleteRequestBuilder $deleteRequestBuilder;
+
+    private ContactDeleteResponseParser $deleteResponseParser;
+
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
@@ -43,6 +63,16 @@ final class ContactService
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('CONTACT');
         $this->requestFactory = $requestFactory ?? new ContactRequestFactory();
+        $this->checkRequestBuilder = new ContactCheckRequestBuilder();
+        $this->checkResponseParser = new ContactCheckResponseParser();
+        $this->createRequestBuilder = new ContactCreateRequestBuilder();
+        $this->createResponseParser = new ContactCreateResponseParser();
+        $this->infoRequestBuilder = new ContactInfoRequestBuilder();
+        $this->infoResponseParser = new ContactInfoResponseParser();
+        $this->updateRequestBuilder = new ContactUpdateRequestBuilder();
+        $this->updateResponseParser = new ContactUpdateResponseParser();
+        $this->deleteRequestBuilder = new ContactDeleteRequestBuilder();
+        $this->deleteResponseParser = new ContactDeleteResponseParser();
     }
 
     /**
@@ -52,15 +82,15 @@ final class ContactService
      */
     public function check(string|array $request): array
     {
-        $xml = (new ContactCheckRequestBuilder())->build(
+        $xml = $this->checkRequestBuilder->build(
             $this->requestFactory->checkFromArray($this->normalizeCheckRequest($request)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new ContactCheckResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->checkResponseParser->parse($responseXml, $metadata),
         );
 
         return \array_map(
@@ -89,15 +119,15 @@ final class ContactService
      */
     public function create(array $request): array
     {
-        $xml = (new ContactCreateRequestBuilder())->build(
+        $xml = $this->createRequestBuilder->build(
             $this->requestFactory->createFromArray($request),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new ContactCreateResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->createResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -149,15 +179,15 @@ final class ContactService
             throw new \InvalidArgumentException('Contact id must be a non-empty string.');
         }
 
-        $xml = (new ContactInfoRequestBuilder())->build(
+        $xml = $this->infoRequestBuilder->build(
             new ContactInfoRequest($id),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new ContactInfoResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->infoResponseParser->parse($responseXml, $metadata),
         );
 
         $postalInfo = null;
@@ -227,15 +257,15 @@ final class ContactService
      */
     public function update(array $request): array
     {
-        $xml = (new ContactUpdateRequestBuilder())->build(
+        $xml = $this->updateRequestBuilder->build(
             $this->requestFactory->updateFromArray($request),
             $this->tridGenerator->nextId(),
         );
 
         $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new ContactUpdateResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->updateResponseParser->parse($responseXml, $metadata),
         );
 
         return [];
@@ -250,15 +280,15 @@ final class ContactService
             throw new \InvalidArgumentException('Contact id must be a non-empty string.');
         }
 
-        $xml = (new ContactDeleteRequestBuilder())->build(
+        $xml = $this->deleteRequestBuilder->build(
             new ContactDeleteRequest($id),
             $this->tridGenerator->nextId(),
         );
 
         $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new ContactDeleteResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->deleteResponseParser->parse($responseXml, $metadata),
         );
 
         return [];

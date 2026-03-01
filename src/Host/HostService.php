@@ -33,6 +33,26 @@ final class HostService
 
     private HostRequestFactory $requestFactory;
 
+    private HostCheckRequestBuilder $checkRequestBuilder;
+
+    private HostCheckResponseParser $checkResponseParser;
+
+    private HostInfoRequestBuilder $infoRequestBuilder;
+
+    private HostInfoResponseParser $infoResponseParser;
+
+    private HostCreateRequestBuilder $createRequestBuilder;
+
+    private HostCreateResponseParser $createResponseParser;
+
+    private HostUpdateRequestBuilder $updateRequestBuilder;
+
+    private HostUpdateResponseParser $updateResponseParser;
+
+    private HostDeleteRequestBuilder $deleteRequestBuilder;
+
+    private HostDeleteResponseParser $deleteResponseParser;
+
     /**
      * Creates a host service with optional test doubles for execution and DTO mapping.
      */
@@ -46,6 +66,16 @@ final class HostService
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('HOST');
         $this->requestFactory = $requestFactory ?? new HostRequestFactory();
+        $this->checkRequestBuilder = new HostCheckRequestBuilder();
+        $this->checkResponseParser = new HostCheckResponseParser();
+        $this->infoRequestBuilder = new HostInfoRequestBuilder();
+        $this->infoResponseParser = new HostInfoResponseParser();
+        $this->createRequestBuilder = new HostCreateRequestBuilder();
+        $this->createResponseParser = new HostCreateResponseParser();
+        $this->updateRequestBuilder = new HostUpdateRequestBuilder();
+        $this->updateResponseParser = new HostUpdateResponseParser();
+        $this->deleteRequestBuilder = new HostDeleteRequestBuilder();
+        $this->deleteResponseParser = new HostDeleteResponseParser();
     }
 
     /**
@@ -55,15 +85,15 @@ final class HostService
      */
     public function check(string|array $request): array
     {
-        $xml = (new HostCheckRequestBuilder())->build(
+        $xml = $this->checkRequestBuilder->build(
             $this->requestFactory->checkFromArray($this->normalizeCheckRequest($request)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HostCheckResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->checkResponseParser->parse($responseXml, $metadata),
         );
 
         return \array_map(
@@ -92,15 +122,15 @@ final class HostService
      */
     public function info(string $name): array
     {
-        $xml = (new HostInfoRequestBuilder())->build(
+        $xml = $this->infoRequestBuilder->build(
             new HostInfoRequest($this->requireHostName($name)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HostInfoResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->infoResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -138,15 +168,15 @@ final class HostService
     {
         $normalizedRequest = $this->normalizeCreateRequest($request, $ipv4, $ipv6);
 
-        $xml = (new HostCreateRequestBuilder())->build(
+        $xml = $this->createRequestBuilder->build(
             $this->requestFactory->createFromArray($normalizedRequest),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HostCreateResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->createResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -162,15 +192,15 @@ final class HostService
      */
     public function update(array $request): array
     {
-        $xml = (new HostUpdateRequestBuilder())->build(
+        $xml = $this->updateRequestBuilder->build(
             $this->requestFactory->updateFromArray($request),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HostUpdateResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->updateResponseParser->parse($responseXml, $metadata),
         );
 
         return [];
@@ -181,15 +211,15 @@ final class HostService
      */
     public function delete(string $name): array
     {
-        $xml = (new HostDeleteRequestBuilder())->build(
+        $xml = $this->deleteRequestBuilder->build(
             new HostDeleteRequest($this->requireHostName($name)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HostDeleteResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->deleteResponseParser->parse($responseXml, $metadata),
         );
 
         return [];

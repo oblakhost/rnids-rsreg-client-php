@@ -38,6 +38,30 @@ final class DomainService
 
     private DomainRegisterRequestFactory $registerRequestFactory;
 
+    private DomainCheckRequestBuilder $checkRequestBuilder;
+
+    private DomainCheckResponseParser $checkResponseParser;
+
+    private DomainInfoRequestBuilder $infoRequestBuilder;
+
+    private DomainInfoResponseParser $infoResponseParser;
+
+    private DomainRegisterRequestBuilder $registerRequestBuilder;
+
+    private DomainRegisterResponseParser $registerResponseParser;
+
+    private DomainRenewRequestBuilder $renewRequestBuilder;
+
+    private DomainRenewResponseParser $renewResponseParser;
+
+    private DomainDeleteRequestBuilder $deleteRequestBuilder;
+
+    private DomainDeleteResponseParser $deleteResponseParser;
+
+    private DomainTransferRequestBuilder $transferRequestBuilder;
+
+    private DomainTransferResponseParser $transferResponseParser;
+
     private static function normalizeNameserverAddress(mixed $address, int $addressIndex): string
     {
         if (!\is_string($address) || '' === \trim($address)) {
@@ -64,6 +88,18 @@ final class DomainService
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('DOMAIN');
         $this->registerRequestFactory = $registerRequestFactory ?? new DomainRegisterRequestFactory();
+        $this->checkRequestBuilder = new DomainCheckRequestBuilder();
+        $this->checkResponseParser = new DomainCheckResponseParser();
+        $this->infoRequestBuilder = new DomainInfoRequestBuilder();
+        $this->infoResponseParser = new DomainInfoResponseParser();
+        $this->registerRequestBuilder = new DomainRegisterRequestBuilder();
+        $this->registerResponseParser = new DomainRegisterResponseParser();
+        $this->renewRequestBuilder = new DomainRenewRequestBuilder();
+        $this->renewResponseParser = new DomainRenewResponseParser();
+        $this->deleteRequestBuilder = new DomainDeleteRequestBuilder();
+        $this->deleteResponseParser = new DomainDeleteResponseParser();
+        $this->transferRequestBuilder = new DomainTransferRequestBuilder();
+        $this->transferResponseParser = new DomainTransferResponseParser();
     }
 
     /**
@@ -73,15 +109,15 @@ final class DomainService
      */
     public function check(string|array $request): array
     {
-        $xml = (new DomainCheckRequestBuilder())->build(
+        $xml = $this->checkRequestBuilder->build(
             new DomainCheckRequest($this->normalizeCheckNames($request)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainCheckResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->checkResponseParser->parse($responseXml, $metadata),
         );
 
         return \array_map(
@@ -119,7 +155,7 @@ final class DomainService
      */
     public function info(string $name, ?string $hosts = null): array
     {
-        $xml = (new DomainInfoRequestBuilder())->build(
+        $xml = $this->infoRequestBuilder->build(
             new DomainInfoRequest(
                 $this->requireDomainName($name),
                 $this->optionalHosts($hosts),
@@ -129,8 +165,8 @@ final class DomainService
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainInfoResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->infoResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -221,15 +257,15 @@ final class DomainService
             $extension,
         );
 
-        $xml = (new DomainRegisterRequestBuilder())->build(
+        $xml = $this->registerRequestBuilder->build(
             $this->registerRequestFactory->fromArray($normalizedRequest),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainRegisterResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->registerResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -253,7 +289,7 @@ final class DomainService
     {
         $normalizedRequest = $this->normalizeRenewRequest($request, $years);
 
-        $xml = (new DomainRenewRequestBuilder())->build(
+        $xml = $this->renewRequestBuilder->build(
             new DomainRenewRequest(
                 $this->requireName($normalizedRequest),
                 $this->requireCurrentExpirationDate($normalizedRequest),
@@ -265,8 +301,8 @@ final class DomainService
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainRenewResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->renewResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -280,15 +316,15 @@ final class DomainService
      */
     public function delete(string $name): array
     {
-        $xml = (new DomainDeleteRequestBuilder())->build(
+        $xml = $this->deleteRequestBuilder->build(
             new DomainDeleteRequest($this->requireDomainName($name)),
             $this->tridGenerator->nextId(),
         );
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainDeleteResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->deleteResponseParser->parse($responseXml, $metadata),
         );
 
         return [];
@@ -315,7 +351,7 @@ final class DomainService
      */
     public function transfer(array $request): array
     {
-        $xml = (new DomainTransferRequestBuilder())->build(
+        $xml = $this->transferRequestBuilder->build(
             new DomainTransferRequest(
                 $this->requireTransferOperation($request),
                 $this->requireName($request),
@@ -328,8 +364,8 @@ final class DomainService
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new DomainTransferResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->transferResponseParser->parse($responseXml, $metadata),
         );
 
         return [

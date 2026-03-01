@@ -26,6 +26,22 @@ final class SessionService
 
     private ClTridGenerator $tridGenerator;
 
+    private HelloRequestBuilder $helloRequestBuilder;
+
+    private HelloResponseParser $helloResponseParser;
+
+    private LoginRequestBuilder $loginRequestBuilder;
+
+    private LoginResponseParser $loginResponseParser;
+
+    private LogoutRequestBuilder $logoutRequestBuilder;
+
+    private LogoutResponseParser $logoutResponseParser;
+
+    private PollRequestBuilder $pollRequestBuilder;
+
+    private PollResponseParser $pollResponseParser;
+
     /**
      * @param CommandExecutor|null $executor Optional command executor override for tests.
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
@@ -38,6 +54,14 @@ final class SessionService
     ) {
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('SESSION');
+        $this->helloRequestBuilder = new HelloRequestBuilder();
+        $this->helloResponseParser = new HelloResponseParser();
+        $this->loginRequestBuilder = new LoginRequestBuilder();
+        $this->loginResponseParser = new LoginResponseParser();
+        $this->logoutRequestBuilder = new LogoutRequestBuilder();
+        $this->logoutResponseParser = new LogoutResponseParser();
+        $this->pollRequestBuilder = new PollRequestBuilder();
+        $this->pollResponseParser = new PollResponseParser();
     }
 
     /**
@@ -54,7 +78,7 @@ final class SessionService
      */
     public function login(array $request): array
     {
-        $xml = (new LoginRequestBuilder())->build(
+        $xml = $this->loginRequestBuilder->build(
             new LoginRequest(
                 clientId: $this->requireString($request, 'clientId'),
                 password: $this->requireString($request, 'password'),
@@ -68,8 +92,8 @@ final class SessionService
 
         $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new LoginResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->loginResponseParser->parse($responseXml, $metadata),
         );
 
         return [];
@@ -88,9 +112,9 @@ final class SessionService
     public function hello(): array
     {
         $response = $this->executor->execute(
-            (new HelloRequestBuilder())->build(),
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new HelloResponseParser())->parse($responseXml, $metadata),
+            $this->helloRequestBuilder->build(),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->helloResponseParser->parse($responseXml, $metadata),
         );
 
         return [
@@ -108,12 +132,12 @@ final class SessionService
      */
     public function logout(): array
     {
-        $xml = (new LogoutRequestBuilder())->build($this->tridGenerator->nextId());
+        $xml = $this->logoutRequestBuilder->build($this->tridGenerator->nextId());
 
         $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new LogoutResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->logoutResponseParser->parse($responseXml, $metadata),
         );
 
         return [];
@@ -132,12 +156,12 @@ final class SessionService
     public function poll(array $request = []): array
     {
         $pollRequest = $this->buildPollRequest($request);
-        $xml = (new PollRequestBuilder())->build($pollRequest, $this->tridGenerator->nextId());
+        $xml = $this->pollRequestBuilder->build($pollRequest, $this->tridGenerator->nextId());
 
         $response = $this->executor->execute(
             $xml,
-            static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
-                (new PollResponseParser())->parse($responseXml, $metadata),
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->pollResponseParser->parse($responseXml, $metadata),
         );
 
         return [
