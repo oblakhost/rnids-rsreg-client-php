@@ -20,6 +20,7 @@ final class IntegrationConfigTest extends TestCase
         'RNIDS_EPP_REGISTER_TECH_CONTACT',
         'RNIDS_EPP_REGISTER_AUTH_INFO',
         'RNIDS_EPP_REGISTER_NAMESERVERS',
+        'RNIDS_EPP_TEST_CONTACT_ID',
     ];
 
     public function testUniqueRegisterDomainNameReturnsExpectedFormat(): void
@@ -67,6 +68,18 @@ final class IntegrationConfigTest extends TestCase
         $this->expectExceptionMessage('Domain name must be a non-empty string.');
 
         IntegrationConfig::domainRegisterRequest('');
+    }
+
+    public function testTestContactHandleUsesEnvironmentValueWhenPresent(): void
+    {
+        $this->setEnv('RNIDS_EPP_TEST_CONTACT_ID', 'OBL-ENV-001');
+
+        self::assertSame('OBL-ENV-001', IntegrationConfig::testContactHandle());
+    }
+
+    public function testTestContactHandleFallsBackToStableDefaultHandle(): void
+    {
+        self::assertSame('OBL-test-kontakt', IntegrationConfig::testContactHandle());
     }
 
     protected function tearDown(): void

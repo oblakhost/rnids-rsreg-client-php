@@ -19,6 +19,7 @@ final class IntegrationConfig
     private const DEFAULT_REGISTER_AUTH_INFO = 'Rnids-Integration-Auth-2026';
 
     private const DEFAULT_CONTACT_FIXTURE_SEED = 'rnids-contact-fixture';
+    private const DEFAULT_TEST_CONTACT_HANDLE = 'OBL-test-kontakt';
 
     private const DEFAULT_REGISTER_NAMESERVERS = [
         'ns1.komodarstvo.rs',
@@ -166,6 +167,17 @@ final class IntegrationConfig
         }
 
         return $factory->withRunToken($runToken);
+    }
+
+    public static function testContactHandle(): string
+    {
+        $handle = \getenv('RNIDS_EPP_TEST_CONTACT_ID');
+
+        if (!\is_string($handle) || '' === \trim($handle)) {
+            return self::DEFAULT_TEST_CONTACT_HANDLE;
+        }
+
+        return $handle;
     }
 
     private static function clientCertificatePath(): string
