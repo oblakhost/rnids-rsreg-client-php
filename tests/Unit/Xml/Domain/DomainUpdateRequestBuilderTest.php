@@ -6,8 +6,8 @@ namespace Tests\Unit\Xml\Domain;
 
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
+use RNIDS\Domain\Dto\DomainExtension;
 use RNIDS\Domain\Dto\DomainRegisterContact;
-use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
 use RNIDS\Domain\Dto\DomainUpdateSection;
 use RNIDS\Xml\Domain\DomainUpdateRequestBuilder;
@@ -69,7 +69,7 @@ final class DomainUpdateRequestBuilderTest extends TestCase
                 new DomainUpdateSection([ new DomainRegisterContact('admin', 'ADM-1') ], []),
                 null,
                 null,
-                new DomainRegisterExtension('Remark', true, 'normal', false, true),
+                new DomainExtension('Remark', true, 'normal', false, true),
             ),
             'TRID-EXT-1',
         );

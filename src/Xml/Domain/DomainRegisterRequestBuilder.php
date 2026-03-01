@@ -15,6 +15,13 @@ use RNIDS\Xml\XmlComposer;
  */
 final class DomainRegisterRequestBuilder
 {
+    private DomainExtensionXmlBuilder $extensionXmlBuilder;
+
+    public function __construct(?DomainExtensionXmlBuilder $extensionXmlBuilder = null)
+    {
+        $this->extensionXmlBuilder = $extensionXmlBuilder ?? new DomainExtensionXmlBuilder();
+    }
+
     /**
      * Builds a deterministic EPP domain register XML command.
      */
@@ -109,50 +116,6 @@ final class DomainRegisterRequestBuilder
 
     private function extensionXml(DomainRegisterRequest $request): string
     {
-        $extension = $request->extension;
-
-        if (null === $extension) {
-            return '';
-        }
-
-        $parts = \array_values(\array_filter([
-            $this->extensionRemarkXml($extension->remark),
-            $this->extensionBoolXml('domainExt:isWhoisPrivacy', $extension->isWhoisPrivacy),
-            $this->extensionOperationModeXml($extension->operationMode),
-            $this->extensionBoolXml('domainExt:notifyAdmin', $extension->notifyAdmin),
-            $this->extensionBoolXml('domainExt:dnsSec', $extension->dnsSec),
-        ]));
-
-        if ([] === $parts) {
-            return '';
-        }
-
-        return '<extension>'
-            . '<domainExt:domain-ext xmlns:domainExt="' . NamespaceRegistry::RNIDS_DOMAIN_EXT . '">'
-            . \implode('', $parts)
-            . '</domainExt:domain-ext>'
-            . '</extension>';
-    }
-
-    private function extensionRemarkXml(?string $remark): ?string
-    {
-        return null !== $remark ? XmlComposer::element('domainExt:remark', $remark) : null;
-    }
-
-    private function extensionOperationModeXml(?string $operationMode): ?string
-    {
-        return null !== $operationMode ? XmlComposer::element(
-            'domainExt:operationMode',
-            $operationMode,
-        ) : null;
-    }
-
-    private function extensionBoolXml(string $nodeName, ?bool $value): ?string
-    {
-        if (null === $value) {
-            return null;
-        }
-
-        return XmlComposer::element($nodeName, $value ? 'true' : 'false');
+        return $this->extensionXmlBuilder->build($request->extension);
     }
 }

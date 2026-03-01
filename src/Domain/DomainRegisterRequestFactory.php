@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace RNIDS\Domain;
 
+use RNIDS\Domain\Dto\DomainExtension;
 use RNIDS\Domain\Dto\DomainRegisterContact;
-use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRegisterRequest;
 
@@ -277,7 +277,7 @@ final class DomainRegisterRequestFactory
     /**
      * @param array{extension?: mixed} $request
      */
-    private function optionalRegisterExtension(array $request): ?DomainRegisterExtension
+    private function optionalRegisterExtension(array $request): ?DomainExtension
     {
         $extension = $request['extension'] ?? null;
 
@@ -291,7 +291,7 @@ final class DomainRegisterRequestFactory
             );
         }
 
-        return new DomainRegisterExtension(
+        return new DomainExtension(
             $this->normalizeExtensionRemark($extension),
             $this->optionalBool($extension, 'isWhoisPrivacy'),
             $this->normalizeExtensionOperationMode($extension),

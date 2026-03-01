@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace RNIDS\Domain\Dto;
 
 /**
- * Represents RNIDS domain extension fields for register command.
+ * Represents RNIDS domain extension fields shared by register/update commands.
  */
-final class DomainRegisterExtension
+final class DomainExtension
 {
     /**
      * @param ?non-empty-string $remark

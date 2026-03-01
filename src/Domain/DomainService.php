@@ -7,9 +7,9 @@ namespace RNIDS\Domain;
 use RNIDS\Connection\Transport;
 use RNIDS\Domain\Dto\DomainCheckRequest;
 use RNIDS\Domain\Dto\DomainDeleteRequest;
+use RNIDS\Domain\Dto\DomainExtension;
 use RNIDS\Domain\Dto\DomainInfoRequest;
 use RNIDS\Domain\Dto\DomainRegisterContact;
-use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainRenewRequest;
 use RNIDS\Domain\Dto\DomainTransferRequest;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
@@ -545,7 +545,7 @@ final class DomainService
         return $status;
     }
 
-    private function parseUpdateExtension(mixed $extension): ?DomainRegisterExtension
+    private function parseUpdateExtension(mixed $extension): ?DomainExtension
     {
         if (null === $extension) {
             return null;
@@ -557,7 +557,7 @@ final class DomainService
             );
         }
 
-        return new DomainRegisterExtension(
+        return new DomainExtension(
             $this->parseUpdateExtensionRemark($extension),
             $this->parseUpdateExtensionBool($extension, 'isWhoisPrivacy'),
             $this->parseUpdateExtensionOperationMode($extension),

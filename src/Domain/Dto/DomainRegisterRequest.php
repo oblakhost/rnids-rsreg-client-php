@@ -25,7 +25,7 @@ final class DomainRegisterRequest
         public readonly string $registrant,
         public readonly array $contacts,
         public readonly ?string $authInfo,
-        public readonly ?DomainRegisterExtension $extension,
+        public readonly ?DomainExtension $extension,
     ) {
     }
 }
