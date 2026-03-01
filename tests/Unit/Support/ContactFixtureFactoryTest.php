@@ -20,6 +20,9 @@ final class ContactFixtureFactoryTest extends TestCase
 
         self::assertSame($payloadA, $payloadB);
         self::assertSame('0', $payloadA['extension']['isLegalEntity']);
+        self::assertSame('other', $payloadA['extension']['identKind']);
+        self::assertArrayHasKey('identExpiry', $payloadA['extension']);
+        self::assertNotSame('', $payloadA['extension']['identExpiry']);
     }
 
     public function testCompanyPayloadContainsLegalEntityAndVatNo(): void
@@ -30,6 +33,9 @@ final class ContactFixtureFactoryTest extends TestCase
         self::assertSame('1', $payload['extension']['isLegalEntity']);
         self::assertArrayHasKey('vatNo', $payload['extension']);
         self::assertNotSame('', $payload['extension']['vatNo']);
+        self::assertSame('other', $payload['extension']['identKind']);
+        self::assertArrayHasKey('identExpiry', $payload['extension']);
+        self::assertNotSame('', $payload['extension']['identExpiry']);
     }
 
     public function testRunTokenProducesDistinctStableIds(): void

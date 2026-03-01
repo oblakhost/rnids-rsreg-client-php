@@ -6,6 +6,8 @@ namespace Tests\Support;
 
 final class ContactFixtureFactory
 {
+    private const DEFAULT_IDENT_EXPIRY = '2099-12-31';
+
     public static function forSeed(string $seed): self
     {
         if ('' === \trim($seed)) {
@@ -63,7 +65,8 @@ final class ContactFixtureFactory
      *   extension: array{
      *     ident: non-empty-string,
      *     identDescription: non-empty-string,
-     *     identKind: 'natId',
+     *     identExpiry: non-empty-string,
+     *     identKind: 'other',
      *     isLegalEntity: '0'
      *   }
      * }
@@ -79,7 +82,8 @@ final class ContactFixtureFactory
             'extension' => [
                 'ident' => 'IND-' . \substr($id, 2),
                 'identDescription' => 'Individual profile',
-                'identKind' => 'natId',
+                'identExpiry' => self::DEFAULT_IDENT_EXPIRY,
+                'identKind' => 'other',
                 'isLegalEntity' => '0',
             ],
             'id' => $id,
@@ -121,7 +125,8 @@ final class ContactFixtureFactory
      *   extension: array{
      *     ident: non-empty-string,
      *     identDescription: non-empty-string,
-     *     identKind: 'companyNumber',
+     *     identExpiry: non-empty-string,
+     *     identKind: 'other',
      *     isLegalEntity: '1',
      *     vatNo: non-empty-string
      *   }
@@ -138,7 +143,8 @@ final class ContactFixtureFactory
             'extension' => [
                 'ident' => 'COM-' . \substr($id, 2),
                 'identDescription' => 'Company profile',
-                'identKind' => 'companyNumber',
+                'identExpiry' => self::DEFAULT_IDENT_EXPIRY,
+                'identKind' => 'other',
                 'isLegalEntity' => '1',
                 'vatNo' => 'RS' . \substr(\md5($id), 0, 8),
             ],

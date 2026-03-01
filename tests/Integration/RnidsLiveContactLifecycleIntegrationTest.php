@@ -42,7 +42,9 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
     #[Group('contact-lifecycle')]
     public function testContactLifecycleCreateUpdateInfoDeleteFlow(): void
     {
-        $factory = IntegrationConfig::contactFixtures();
+        $factory = IntegrationConfig::contactFixtures()->withRunToken(
+            \strtoupper(\bin2hex(\random_bytes(4))),
+        );
         $createPayload = $factory->individualCreatePayload();
         $createdContactId = null;
 
