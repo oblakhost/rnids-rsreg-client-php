@@ -154,6 +154,15 @@ final class SessionService
      *
      * @return array{
      *   count: int|null,
+     *   domainTransferData: array{
+     *     actionClientId: string|null,
+     *     actionDate: string|null,
+     *     expirationDate: string|null,
+     *     name: string|null,
+     *     requestClientId: string|null,
+     *     requestDate: string|null,
+     *     transferStatus: string|null,
+     *   }|null,
      *   message: string|null,
      *   messageId: string|null,
      *   queueDate: string|null

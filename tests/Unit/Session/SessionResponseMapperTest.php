@@ -7,6 +7,7 @@ namespace Tests\Unit\Session;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Session\Dto\HelloResponse;
+use RNIDS\Session\Dto\PollDomainTransferData;
 use RNIDS\Session\Dto\PollResponse;
 use RNIDS\Session\SessionResponseMapper;
 use RNIDS\Xml\Response\ResponseMetadata;
@@ -39,10 +40,34 @@ final class SessionResponseMapperTest extends TestCase
     {
         $mapper = new SessionResponseMapper();
         $metadata = new ResponseMetadata(1301, 'Ack', 'CL-1', 'SV-1');
-        $poll = new PollResponse($metadata, 1, 'MSG-1', '2026-02-27T00:00:00.0Z', 'Message');
+        $poll = new PollResponse(
+            $metadata,
+            1,
+            'MSG-1',
+            '2026-02-27T00:00:00.0Z',
+            'Message',
+            new PollDomainTransferData(
+                'example.rs',
+                'pending',
+                'REG-1',
+                '2026-03-01T00:00:00.0Z',
+                'REG-2',
+                '2026-03-02T00:00:00.0Z',
+                '2027-03-01T00:00:00.0Z',
+            ),
+        );
 
         self::assertSame([
             'count' => 1,
+            'domainTransferData' => [
+                'actionClientId' => 'REG-2',
+                'actionDate' => '2026-03-02T00:00:00.0Z',
+                'expirationDate' => '2027-03-01T00:00:00.0Z',
+                'name' => 'example.rs',
+                'requestClientId' => 'REG-1',
+                'requestDate' => '2026-03-01T00:00:00.0Z',
+                'transferStatus' => 'pending',
+            ],
             'message' => 'Message',
             'messageId' => 'MSG-1',
             'queueDate' => '2026-02-27T00:00:00.0Z',

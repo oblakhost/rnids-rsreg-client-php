@@ -17,6 +17,7 @@ final class PollResponse
      * @param string|null $messageId Queue message identifier.
      * @param string|null $queueDate Queue message timestamp.
      * @param string|null $message Queue message text.
+     * @param PollDomainTransferData|null $domainTransferData Typed domain transfer resData payload when present.
      */
     public function __construct(
         public readonly ResponseMetadata $metadata,
@@ -24,6 +25,7 @@ final class PollResponse
         public readonly ?string $messageId,
         public readonly ?string $queueDate,
         public readonly ?string $message,
+        public readonly ?PollDomainTransferData $domainTransferData,
     ) {
     }
 }

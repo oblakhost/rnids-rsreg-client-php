@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Session;
 
+use RNIDS\Session\Dto\PollDomainTransferData;
 use RNIDS\Session\Dto\PollResponse;
 use RNIDS\Xml\Parser\XmlParser;
 use RNIDS\Xml\Response\ResponseMetadata;
@@ -28,6 +29,27 @@ final class PollResponseParser
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:msgQ/@id'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:msgQ/epp:qDate'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:msgQ/epp:msg'),
+            $this->parseDomainTransferData($xpath),
+        );
+    }
+
+    private function parseDomainTransferData(\DOMXPath $xpath): ?PollDomainTransferData
+    {
+        $root = '/epp:epp/epp:response/epp:resData/domain:trnData';
+        $nodes = $xpath->query($root);
+
+        if (false === $nodes || 0 === $nodes->length) {
+            return null;
+        }
+
+        return new PollDomainTransferData(
+            XmlParser::firstNodeValue($xpath, $root . '/domain:name'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:trStatus'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:reID'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:reDate'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:acID'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:acDate'),
+            XmlParser::firstNodeValue($xpath, $root . '/domain:exDate'),
         );
     }
 }

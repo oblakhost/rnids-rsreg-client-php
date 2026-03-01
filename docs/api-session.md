@@ -57,8 +57,20 @@ Response shape:
 ```php
 array{
   count: int|null,
+  domainTransferData: array{
+    actionClientId: string|null,
+    actionDate: string|null,
+    expirationDate: string|null,
+    name: string|null,
+    requestClientId: string|null,
+    requestDate: string|null,
+    transferStatus: string|null,
+  }|null,
   message: string|null,
   messageId: string|null,
   queueDate: string|null
 }
 ```
+
+When poll response `resData` contains `domain:trnData`, `domainTransferData` is populated with
+typed transfer fields. For queue-only responses without transfer payload, it is `null`.
