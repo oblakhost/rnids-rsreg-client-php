@@ -8,8 +8,11 @@ use RNIDS\Connection\Transport;
 use RNIDS\Domain\Dto\DomainCheckRequest;
 use RNIDS\Domain\Dto\DomainDeleteRequest;
 use RNIDS\Domain\Dto\DomainInfoRequest;
+use RNIDS\Domain\Dto\DomainRegisterContact;
 use RNIDS\Domain\Dto\DomainRenewRequest;
 use RNIDS\Domain\Dto\DomainTransferRequest;
+use RNIDS\Domain\Dto\DomainUpdateRequest;
+use RNIDS\Domain\Dto\DomainUpdateSection;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 use RNIDS\Xml\ClTrid\IncrementalClTridGenerator;
 use RNIDS\Xml\CommandExecutor;
@@ -25,6 +28,8 @@ use RNIDS\Xml\Domain\DomainRenewRequestBuilder;
 use RNIDS\Xml\Domain\DomainRenewResponseParser;
 use RNIDS\Xml\Domain\DomainTransferRequestBuilder;
 use RNIDS\Xml\Domain\DomainTransferResponseParser;
+use RNIDS\Xml\Domain\DomainUpdateRequestBuilder;
+use RNIDS\Xml\Domain\DomainUpdateResponseParser;
 use RNIDS\Xml\Response\LastResponseMetadata;
 
 /**
@@ -66,6 +71,10 @@ final class DomainService
 
     private DomainTransferResponseParser $transferResponseParser;
 
+    private DomainUpdateRequestBuilder $updateRequestBuilder;
+
+    private DomainUpdateResponseParser $updateResponseParser;
+
     /**
      * Creates a domain service for RNIDS domain lifecycle operations.
      *
@@ -105,6 +114,8 @@ final class DomainService
         $this->deleteResponseParser = new DomainDeleteResponseParser();
         $this->transferRequestBuilder = new DomainTransferRequestBuilder();
         $this->transferResponseParser = new DomainTransferResponseParser();
+        $this->updateRequestBuilder = new DomainUpdateRequestBuilder();
+        $this->updateResponseParser = new DomainUpdateResponseParser();
     }
 
     /**
@@ -290,6 +301,33 @@ final class DomainService
 
     /**
      * @param array{
+     *   name?: mixed,
+     *   add?: mixed,
+     *   remove?: mixed,
+     *   registrant?: mixed,
+     *   authInfo?: mixed
+     * } $request
+     *
+     * @return array{} Empty array on successful domain update command completion.
+     */
+    public function update(array $request): array
+    {
+        $xml = $this->updateRequestBuilder->build(
+            $this->buildUpdateRequest($request),
+            $this->tridGenerator->nextId(),
+        );
+
+        $this->executor->execute(
+            $xml,
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->updateResponseParser->parse($responseXml, $metadata),
+        );
+
+        return $this->responseMapper->mapDeleteResponse();
+    }
+
+    /**
+     * @param array{
      *   operation?: mixed,
      *   name?: mixed,
      *   period?: mixed,
@@ -341,5 +379,165 @@ final class DomainService
         }
 
         return $expirationDate;
+    }
+
+    /**
+     * @param array{
+     *   name?: mixed,
+     *   add?: mixed,
+     *   remove?: mixed,
+     *   registrant?: mixed,
+     *   authInfo?: mixed
+     * } $request
+     */
+    private function buildUpdateRequest(array $request): DomainUpdateRequest
+    {
+        $name = $this->inputNormalizer->requireName($request);
+        $add = $this->parseUpdateSection($request['add'] ?? null, 'add');
+        $remove = $this->parseUpdateSection($request['remove'] ?? null, 'remove');
+        $registrant = $this->inputNormalizer->optionalNullableString($request, 'registrant');
+        $authInfo = $this->inputNormalizer->optionalNullableString($request, 'authInfo');
+
+        if (null === $add && null === $remove && null === $registrant && null === $authInfo) {
+            throw new \InvalidArgumentException(
+                'Domain update request must include at least one of "add", "remove", "registrant", or "authInfo".',
+            );
+        }
+
+        return new DomainUpdateRequest($name, $add, $remove, $registrant, $authInfo);
+    }
+
+    private function parseUpdateSection(mixed $section, string $key): ?DomainUpdateSection
+    {
+        if (null === $section) {
+            return null;
+        }
+
+        if (!\is_array($section)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Domain update request key "%s" must be an array when provided.', $key),
+            );
+        }
+
+        $contacts = $this->parseUpdateContacts($section, $key);
+        $statuses = $this->parseUpdateStatuses($section, $key);
+
+        if ([] === $contacts && [] === $statuses) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" must include at least one of "contacts" or "statuses".',
+                    $key,
+                ),
+            );
+        }
+
+        return new DomainUpdateSection($contacts, $statuses);
+    }
+
+    /**
+     * @param array<string, mixed> $section
+     *
+     * @return list<DomainRegisterContact>
+     */
+    private function parseUpdateContacts(array $section, string $key): array
+    {
+        $contacts = $section['contacts'] ?? [];
+
+        if (!\is_array($contacts)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" key "contacts" must be a list when provided.',
+                    $key,
+                ),
+            );
+        }
+
+        return \array_values(\array_map(
+            fn(mixed $contact, int $index): DomainRegisterContact => $this->parseUpdateContact(
+                $contact,
+                $key,
+                $index,
+            ),
+            $contacts,
+            \array_keys($contacts),
+        ));
+    }
+
+    private function parseUpdateContact(mixed $contact, string $key, int $index): DomainRegisterContact
+    {
+        if (!\is_array($contact)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" contact at index %d must be an array.',
+                    $key,
+                    $index,
+                ),
+            );
+        }
+
+        $type = $contact['type'] ?? null;
+        if (!\is_string($type) || !\in_array($type, [ 'admin', 'tech', 'billing' ], true)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" contact at index %d has invalid "type"'
+                    . ' (allowed: admin, tech, billing).',
+                    $key,
+                    $index,
+                ),
+            );
+        }
+
+        $handle = $contact['handle'] ?? null;
+        if (!\is_string($handle) || '' === \trim($handle)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" contact at index %d must include non-empty "handle".',
+                    $key,
+                    $index,
+                ),
+            );
+        }
+
+        return new DomainRegisterContact($type, $handle);
+    }
+
+    /**
+     * @param array<string, mixed> $section
+     *
+     * @return list<string>
+     */
+    private function parseUpdateStatuses(array $section, string $key): array
+    {
+        $statuses = $section['statuses'] ?? [];
+
+        if (!\is_array($statuses)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" key "statuses" must be a list when provided.',
+                    $key,
+                ),
+            );
+        }
+
+        return \array_values(\array_map(
+            fn(mixed $status, int $index): string => $this->parseUpdateStatus($status, $key, $index),
+            $statuses,
+            \array_keys($statuses),
+        ));
+    }
+
+    private function parseUpdateStatus(mixed $status, string $key, int $index): string
+    {
+        if (!\is_string($status) || '' === \trim($status)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request section "%s" status at index %d must be a non-empty string.',
+                    $key,
+                    $index,
+                ),
+            );
+        }
+
+        return $status;
     }
 }
