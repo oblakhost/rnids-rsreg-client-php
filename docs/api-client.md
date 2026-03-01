@@ -34,6 +34,10 @@ Returns session command service.
 
 Returns domain command service.
 
+### `contact(): ContactService`
+
+Returns contact command service.
+
 ### `host(): HostService`
 
 Returns host command service.

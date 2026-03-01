@@ -7,12 +7,13 @@ Client-oriented API documentation for the RNIDS/RSreg EPP library.
 - [Client](./api-client.md)
 - [Session Service](./api-session.md)
 - [Domain Service](./api-domain.md)
+- [Contact Service](./api-contact.md)
 - [Host Service](./api-host.md)
 
 ## API Shape Notes
 
-- Domain and host `check()` methods return a **direct list of items**.
-- They no longer wrap that list in an `items` key.
+- Domain, contact, and host `check()` methods return a **direct list of items**.
+- They do not wrap that list in an `items` key.
 
 ## Protocol Documentation
 

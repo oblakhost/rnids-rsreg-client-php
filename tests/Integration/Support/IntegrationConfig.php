@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Integration\Support;
 
+use Tests\Support\ContactFixtureFactory;
+
 final class IntegrationConfig
 {
     private const DEFAULT_HOST = 'epp-test.rnids.rs';
@@ -15,6 +17,8 @@ final class IntegrationConfig
     private const DEFAULT_TEST_DOMAIN = 'komodarstvo.rs';
 
     private const DEFAULT_REGISTER_AUTH_INFO = 'Rnids-Integration-Auth-2026';
+
+    private const DEFAULT_CONTACT_FIXTURE_SEED = 'rnids-contact-fixture';
 
     private const DEFAULT_REGISTER_NAMESERVERS = [
         'ns1.komodarstvo.rs',
@@ -144,6 +148,24 @@ final class IntegrationConfig
     public static function registerRegistrantHandle(): string
     {
         return self::requiredEnv('RNIDS_EPP_REGISTER_REGISTRANT');
+    }
+
+    public static function contactFixtures(): ContactFixtureFactory
+    {
+        $seed = \getenv('RNIDS_EPP_CONTACT_FIXTURE_SEED');
+
+        if (!\is_string($seed) || '' === \trim($seed)) {
+            $seed = self::DEFAULT_CONTACT_FIXTURE_SEED;
+        }
+
+        $factory = ContactFixtureFactory::forSeed($seed);
+        $runToken = \getenv('RNIDS_EPP_CONTACT_RUN_TOKEN');
+
+        if (!\is_string($runToken) || '' === \trim($runToken)) {
+            return $factory;
+        }
+
+        return $factory->withRunToken($runToken);
     }
 
     private static function clientCertificatePath(): string

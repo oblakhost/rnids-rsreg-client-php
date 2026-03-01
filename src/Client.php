@@ -7,6 +7,7 @@ namespace RNIDS;
 use RNIDS\Connection\ConnectionConfig;
 use RNIDS\Connection\TlsConfig;
 use RNIDS\Connection\Transport;
+use RNIDS\Contact\ContactService;
 use RNIDS\Domain\DomainService;
 use RNIDS\Host\HostService;
 use RNIDS\Session\SessionService;
@@ -20,6 +21,8 @@ final class Client
     private SessionService $sessionService;
 
     private DomainService $domainService;
+
+    private ContactService $contactService;
 
     private HostService $hostService;
 
@@ -106,16 +109,21 @@ final class Client
         $result = [];
 
         foreach ($value as $item) {
-            if (!\is_string($item) || '' === \trim($item)) {
-                throw new \InvalidArgumentException(
-                    \sprintf('Client config key "%s" must contain only non-empty strings.', $key),
-                );
-            }
-
-            $result[] = $item;
+            $result[] = self::requireListItemString($key, $item);
         }
 
         return $result;
+    }
+
+    private static function requireListItemString(string $key, mixed $value): string
+    {
+        if (!\is_string($value) || '' === \trim($value)) {
+            throw new \InvalidArgumentException(
+                \sprintf('Client config key "%s" must contain only non-empty strings.', $key),
+            );
+        }
+
+        return $value;
     }
 
     /**
@@ -137,6 +145,13 @@ final class Client
         $this->lastResponseMetadata = new LastResponseMetadata();
         $this->sessionService = new SessionService($this->transport, null, null, $this->lastResponseMetadata);
         $this->domainService = new DomainService(
+            $this->transport,
+            null,
+            null,
+            null,
+            $this->lastResponseMetadata,
+        );
+        $this->contactService = new ContactService(
             $this->transport,
             null,
             null,
@@ -224,6 +239,14 @@ final class Client
     public function domain(): DomainService
     {
         return $this->domainService;
+    }
+
+    /**
+     * Returns the fluent contact service.
+     */
+    public function contact(): ContactService
+    {
+        return $this->contactService;
     }
 
     /**

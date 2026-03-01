@@ -39,6 +39,7 @@ $client->close();
 
 - Session: `$client->session()->hello()`, `login()`, `logout()`, `poll()`
 - Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `delete()`, `transfer()`
+- Contact: `$client->contact()->check()`, `create()`, `info()`, `update()`, `delete()`
 - Host: `$client->host()->check()`, `info()`, `create()`, `update()`, `delete()`
 
 ## Documentation
@@ -47,6 +48,7 @@ $client->close();
 - Client API: [`docs/api-client.md`](docs/api-client.md)
 - Session API: [`docs/api-session.md`](docs/api-session.md)
 - Domain API: [`docs/api-domain.md`](docs/api-domain.md)
+- Contact API: [`docs/api-contact.md`](docs/api-contact.md)
 - Host API: [`docs/api-host.md`](docs/api-host.md)
 - EPP Protocol Reference: [`docs/epp-protocol/epp-reference-index.md`](docs/epp-protocol/epp-reference-index.md)
 
@@ -57,6 +59,8 @@ Protocol and transport issues are surfaced as exceptions from `RNIDS\Exception\*
 Successful operations return typed/normalized data arrays from service methods, while low-level response context is available via:
 
 ```php
+<?php
+
 $client->responseMeta();
 ```
 
