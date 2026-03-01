@@ -20,6 +20,7 @@ final class DomainUpdateRequest
         public readonly ?DomainUpdateSection $remove = null,
         public readonly ?string $registrant = null,
         public readonly ?string $authInfo = null,
+        public readonly ?DomainRegisterExtension $extension = null,
     ) {
     }
 }

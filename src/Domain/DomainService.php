@@ -9,6 +9,7 @@ use RNIDS\Domain\Dto\DomainCheckRequest;
 use RNIDS\Domain\Dto\DomainDeleteRequest;
 use RNIDS\Domain\Dto\DomainInfoRequest;
 use RNIDS\Domain\Dto\DomainRegisterContact;
+use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainRenewRequest;
 use RNIDS\Domain\Dto\DomainTransferRequest;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
@@ -305,7 +306,8 @@ final class DomainService
      *   add?: mixed,
      *   remove?: mixed,
      *   registrant?: mixed,
-     *   authInfo?: mixed
+     *   authInfo?: mixed,
+     *   extension?: mixed
      * } $request
      *
      * @return array{} Empty array on successful domain update command completion.
@@ -387,7 +389,8 @@ final class DomainService
      *   add?: mixed,
      *   remove?: mixed,
      *   registrant?: mixed,
-     *   authInfo?: mixed
+     *   authInfo?: mixed,
+     *   extension?: mixed
      * } $request
      */
     private function buildUpdateRequest(array $request): DomainUpdateRequest
@@ -397,6 +400,7 @@ final class DomainService
         $remove = $this->parseUpdateSection($request['remove'] ?? null, 'remove');
         $registrant = $this->inputNormalizer->optionalNullableString($request, 'registrant');
         $authInfo = $this->inputNormalizer->optionalNullableString($request, 'authInfo');
+        $extension = $this->parseUpdateExtension($request['extension'] ?? null);
 
         if (null === $add && null === $remove && null === $registrant && null === $authInfo) {
             throw new \InvalidArgumentException(
@@ -404,7 +408,7 @@ final class DomainService
             );
         }
 
-        return new DomainUpdateRequest($name, $add, $remove, $registrant, $authInfo);
+        return new DomainUpdateRequest($name, $add, $remove, $registrant, $authInfo, $extension);
     }
 
     private function parseUpdateSection(mixed $section, string $key): ?DomainUpdateSection
@@ -539,5 +543,89 @@ final class DomainService
         }
 
         return $status;
+    }
+
+    private function parseUpdateExtension(mixed $extension): ?DomainRegisterExtension
+    {
+        if (null === $extension) {
+            return null;
+        }
+
+        if (!\is_array($extension)) {
+            throw new \InvalidArgumentException(
+                'Domain update request key "extension" must be an array when provided.',
+            );
+        }
+
+        return new DomainRegisterExtension(
+            $this->parseUpdateExtensionRemark($extension),
+            $this->parseUpdateExtensionBool($extension, 'isWhoisPrivacy'),
+            $this->parseUpdateExtensionOperationMode($extension),
+            $this->parseUpdateExtensionBool($extension, 'notifyAdmin'),
+            $this->parseUpdateExtensionBool($extension, 'dnsSec'),
+        );
+    }
+
+    /**
+     * @param array<string, mixed> $extension
+     */
+    private function parseUpdateExtensionRemark(array $extension): ?string
+    {
+        $remark = $extension['remark'] ?? null;
+
+        if (null === $remark) {
+            return null;
+        }
+
+        if (!\is_string($remark)) {
+            throw new \InvalidArgumentException(
+                'Domain update request extension key "remark" must be a string when provided.',
+            );
+        }
+
+        return $remark;
+    }
+
+    /**
+     * @param array<string, mixed> $extension
+     */
+    private function parseUpdateExtensionOperationMode(array $extension): ?string
+    {
+        $operationMode = $extension['operationMode'] ?? null;
+
+        if (null === $operationMode) {
+            return null;
+        }
+
+        if (!\is_string($operationMode) || '' === \trim($operationMode)) {
+            throw new \InvalidArgumentException(
+                'Domain update request extension key "operationMode" must be a non-empty string when provided.',
+            );
+        }
+
+        return $operationMode;
+    }
+
+    /**
+     * @param array<string, mixed> $extension
+     */
+    private function parseUpdateExtensionBool(array $extension, string $key): ?bool
+    {
+        $value = $extension[$key] ?? null;
+
+        if (null === $value) {
+            return null;
+        }
+
+        if (!\is_bool($value)) {
+            throw new \InvalidArgumentException(
+                \sprintf(
+                    'Domain update request extension key "%s" must be a boolean when provided.',
+                    $key,
+                ),
+            );
+        }
+
+        return $value;
     }
 }

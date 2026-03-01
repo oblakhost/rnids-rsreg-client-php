@@ -59,6 +59,13 @@ final class DomainServiceUpdateTest extends TestCase
                     [ 'handle' => 'ADM-2', 'type' => 'admin' ],
                 ],
             ],
+            'extension' => [
+                'dnsSec' => true,
+                'isWhoisPrivacy' => true,
+                'notifyAdmin' => false,
+                'operationMode' => 'normal',
+                'remark' => 'Keep existing mode',
+            ],
             'name' => 'example.rs',
             'remove' => [
                 'contacts' => [
@@ -74,6 +81,10 @@ final class DomainServiceUpdateTest extends TestCase
         );
         self::assertStringContainsString(
             '<domain:rem><domain:contact type="admin">ADM-1</domain:contact></domain:rem>',
+            $transport->writtenPayload,
+        );
+        self::assertStringContainsString(
+            '<domainExt:operationMode>normal</domainExt:operationMode>',
             $transport->writtenPayload,
         );
         self::assertSame([], $result);

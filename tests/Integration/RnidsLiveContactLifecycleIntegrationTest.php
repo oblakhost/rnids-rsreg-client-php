@@ -47,8 +47,8 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         $createdContactId = null;
 
         try {
-            $createResult = self::client()->contact()->create($createPayload);
-            $createMeta = self::client()->responseMeta();
+            $createResult = $this->client()->contact()->create($createPayload);
+            $createMeta = $this->client()->responseMeta();
 
             self::assertSame(1000, $createMeta['resultCode']);
             self::assertIsString($createResult['id']);
@@ -57,22 +57,22 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
             $createdContactId = $createResult['id'];
             $updatePayload = $factory->updatePayload($createdContactId);
 
-            self::client()->contact()->update($updatePayload);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+            $this->client()->contact()->update($updatePayload);
+            self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
 
-            $infoResult = self::client()->contact()->info($createdContactId);
+            $infoResult = $this->client()->contact()->info($createdContactId);
 
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+            self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
             self::assertSame($updatePayload['email'], $infoResult['email']);
             self::assertSame($updatePayload['voice'], $infoResult['voice']);
 
-            self::client()->contact()->delete($createdContactId);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+            $this->client()->contact()->delete($createdContactId);
+            self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
             $createdContactId = null;
         } finally {
             if (null !== $createdContactId) {
                 try {
-                    self::client()->contact()->delete($createdContactId);
+                    $this->client()->contact()->delete($createdContactId);
                 } catch (\Throwable) {
                     // Best-effort cleanup for live test safety.
                 }
@@ -81,100 +81,82 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
     }
 
     #[Group('contact-domain-reassign')]
+    // phpcs:ignore SlevomatCodingStandard.Complexity.Cognitive.ComplexityTooHigh
     public function testDomainAdminTechReassignmentAndResetFlow(): void
     {
         $domain = IntegrationConfig::testDomainName();
         $targetContactHandle = IntegrationConfig::testContactHandle();
-        $originalAdmin = null;
-        $originalTech = null;
+        $context = null;
         $adminChanged = false;
         $techChanged = false;
 
         try {
-            try {
-                self::client()->contact()->info($targetContactHandle);
-            } catch (\Throwable $throwable) {
-                self::markTestSkipped(
-                    \sprintf(
-                        'Skipping domain reassignment scenario: target contact "%s" is unavailable (%s).',
-                        $targetContactHandle,
-                        $throwable->getMessage(),
-                    ),
-                );
-            }
+            $this->ensureTargetContactExistsOrSkip($targetContactHandle);
+            $context = $this->domainReassignmentContextOrSkip($domain, $targetContactHandle);
 
-            $initialInfo = self::client()->domain()->info($domain);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-
-            $originalAdmin = $this->firstContactHandleByType($initialInfo['contacts'], 'admin');
-            $originalTech = $this->firstContactHandleByType($initialInfo['contacts'], 'tech');
-
-            if (null === $originalAdmin || null === $originalTech) {
-                self::markTestSkipped(
-                    \sprintf(
-                        'Skipping domain reassignment scenario: domain "%s" must have both admin and tech contacts.',
-                        $domain,
-                    ),
-                );
-            }
-
-            if ($originalAdmin === $targetContactHandle || $originalTech === $targetContactHandle) {
-                self::markTestSkipped(
-                    \sprintf(
-                        'Skipping domain reassignment scenario: target contact "%s" is already assigned on domain "%s".',
-                        $targetContactHandle,
-                        $domain,
-                    ),
-                );
-            }
-
-            $this->reassignDomainContact($domain, 'admin', $originalAdmin, $targetContactHandle);
+            $this->reassignDomainContact(
+                $domain,
+                'admin',
+                $context['originalAdmin'],
+                $targetContactHandle,
+                $context['extensionPayload'],
+            );
             $adminChanged = true;
-            $afterAdminUpdate = self::client()->domain()->info($domain);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-            self::assertSame(
-                $targetContactHandle,
-                $this->firstContactHandleByType($afterAdminUpdate['contacts'], 'admin'),
-            );
+            $this->assertDomainContactTypeHandle($domain, 'admin', $targetContactHandle);
 
-            $this->reassignDomainContact($domain, 'admin', $targetContactHandle, $originalAdmin);
+            $this->reassignDomainContact(
+                $domain,
+                'admin',
+                $targetContactHandle,
+                $context['originalAdmin'],
+                $context['extensionPayload'],
+            );
             $adminChanged = false;
-            $afterAdminReset = self::client()->domain()->info($domain);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-            self::assertSame(
-                $originalAdmin,
-                $this->firstContactHandleByType($afterAdminReset['contacts'], 'admin'),
-            );
+            $this->assertDomainContactTypeHandle($domain, 'admin', $context['originalAdmin']);
 
-            $this->reassignDomainContact($domain, 'tech', $originalTech, $targetContactHandle);
-            $techChanged = true;
-            $afterTechUpdate = self::client()->domain()->info($domain);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-            self::assertSame(
+            $this->reassignDomainContact(
+                $domain,
+                'tech',
+                $context['originalTech'],
                 $targetContactHandle,
-                $this->firstContactHandleByType($afterTechUpdate['contacts'], 'tech'),
+                $context['extensionPayload'],
             );
+            $techChanged = true;
+            $this->assertDomainContactTypeHandle($domain, 'tech', $targetContactHandle);
 
-            $this->reassignDomainContact($domain, 'tech', $targetContactHandle, $originalTech);
-            $techChanged = false;
-            $afterTechReset = self::client()->domain()->info($domain);
-            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-            self::assertSame(
-                $originalTech,
-                $this->firstContactHandleByType($afterTechReset['contacts'], 'tech'),
+            $this->reassignDomainContact(
+                $domain,
+                'tech',
+                $targetContactHandle,
+                $context['originalTech'],
+                $context['extensionPayload'],
             );
+            $techChanged = false;
+            $this->assertDomainContactTypeHandle($domain, 'tech', $context['originalTech']);
         } finally {
-            if ($adminChanged && null !== $originalAdmin) {
+            if ($adminChanged && \is_array($context)) {
                 try {
-                    $this->reassignDomainContact($domain, 'admin', $targetContactHandle, $originalAdmin);
+                    $this->reassignDomainContact(
+                        $domain,
+                        'admin',
+                        $targetContactHandle,
+                        $context['originalAdmin'],
+                        $context['extensionPayload'],
+                    );
                 } catch (\Throwable) {
                     // Best-effort cleanup for live test safety.
                 }
             }
 
-            if ($techChanged && null !== $originalTech) {
+            if ($techChanged && \is_array($context)) {
                 try {
-                    $this->reassignDomainContact($domain, 'tech', $targetContactHandle, $originalTech);
+                    $this->reassignDomainContact(
+                        $domain,
+                        'tech',
+                        $targetContactHandle,
+                        $context['originalTech'],
+                        $context['extensionPayload'],
+                    );
                 } catch (\Throwable) {
                     // Best-effort cleanup for live test safety.
                 }
@@ -182,7 +164,7 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         }
     }
 
-    private static function client(): Client
+    private function client(): Client
     {
         if (null === self::$client) {
             throw new \RuntimeException('Shared RNIDS integration client is not initialized.');
@@ -197,13 +179,10 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
     private function firstContactHandleByType(array $contacts, string $type): ?string
     {
         foreach ($contacts as $contact) {
-            if (($contact['type'] ?? null) !== $type) {
-                continue;
-            }
-
+            $contactType = $contact['type'] ?? null;
             $handle = $contact['handle'] ?? null;
 
-            if (\is_string($handle) && '' !== \trim($handle)) {
+            if ($contactType === $type && \is_string($handle) && '' !== \trim($handle)) {
                 return $handle;
             }
         }
@@ -216,13 +195,15 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         string $type,
         string $removeHandle,
         string $addHandle,
+        array $extensionPayload,
     ): void {
-        self::client()->domain()->update([
+        $this->client()->domain()->update([
             'add' => [
                 'contacts' => [
                     [ 'handle' => $addHandle, 'type' => $type ],
                 ],
             ],
+            'extension' => $extensionPayload,
             'name' => $domain,
             'remove' => [
                 'contacts' => [
@@ -231,6 +212,182 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
             ],
         ]);
 
-        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+        self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
+    }
+
+    /**
+     * @param array{
+     *   extension?: array{
+     *     isWhoisPrivacy?: string|null,
+     *     operationMode?: string|null,
+     *     notifyAdmin?: string|null,
+     *     dnsSec?: string|null,
+     *     remark?: string|null
+     *   }
+     * } $domainInfo
+     *
+     * @return array{
+     *   remark: string,
+     *   isWhoisPrivacy: bool,
+     *   operationMode: string,
+     *   notifyAdmin: bool,
+     *   dnsSec: bool
+     * }|null
+     */
+    private function domainUpdateExtensionPayload(array $domainInfo): ?array
+    {
+        $extension = $domainInfo['extension'] ?? null;
+
+        if (!\is_array($extension)) {
+            return null;
+        }
+
+        $operationMode = $this->nonEmptyStringOrNull($extension['operationMode'] ?? null);
+        $remark = $this->stringOrNull($extension['remark'] ?? '');
+        $isWhoisPrivacy = $this->toBool($extension['isWhoisPrivacy'] ?? null);
+        $notifyAdmin = $this->toBool($extension['notifyAdmin'] ?? null);
+        $dnsSec = $this->toBool($extension['dnsSec'] ?? null);
+
+        if (null === $operationMode || null === $remark) {
+            return null;
+        }
+
+        if (null === $isWhoisPrivacy || null === $notifyAdmin || null === $dnsSec) {
+            return null;
+        }
+
+        return [
+            'dnsSec' => $dnsSec,
+            'isWhoisPrivacy' => $isWhoisPrivacy,
+            'notifyAdmin' => $notifyAdmin,
+            'operationMode' => $operationMode,
+            'remark' => $remark,
+        ];
+    }
+
+    private function toBool(mixed $value): ?bool
+    {
+        if (\is_bool($value)) {
+            return $value;
+        }
+
+        if (!\is_string($value)) {
+            return null;
+        }
+
+        return \filter_var(\trim($value), \FILTER_VALIDATE_BOOLEAN, \FILTER_NULL_ON_FAILURE);
+    }
+
+    /**
+     * @param non-empty-string $targetContactHandle
+     */
+    private function ensureTargetContactExistsOrSkip(string $targetContactHandle): void
+    {
+        try {
+            $this->client()->contact()->info($targetContactHandle);
+        } catch (\Throwable $throwable) {
+            self::markTestSkipped(
+                \sprintf(
+                    'Skipping domain reassignment scenario: target contact "%s" is unavailable (%s).',
+                    $targetContactHandle,
+                    $throwable->getMessage(),
+                ),
+            );
+        }
+    }
+
+    /**
+     * @param non-empty-string $domain
+     * @param non-empty-string $targetContactHandle
+     *
+     * @return array{
+     *   originalAdmin: non-empty-string,
+     *   originalTech: non-empty-string,
+     *   extensionPayload: array{
+     *     remark: string,
+     *     isWhoisPrivacy: bool,
+     *     operationMode: string,
+     *     notifyAdmin: bool,
+     *     dnsSec: bool
+     *   }
+     * }
+     */
+    private function domainReassignmentContextOrSkip(string $domain, string $targetContactHandle): array
+    {
+        $initialInfo = $this->client()->domain()->info($domain);
+        self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
+
+        $originalAdmin = $this->firstContactHandleByType($initialInfo['contacts'], 'admin');
+        $originalTech = $this->firstContactHandleByType($initialInfo['contacts'], 'tech');
+        $extensionPayload = $this->domainUpdateExtensionPayload($initialInfo);
+
+        if (null === $originalAdmin || null === $originalTech) {
+            self::markTestSkipped(
+                \sprintf(
+                    'Skipping domain reassignment scenario: domain "%s" must have both admin and tech contacts.',
+                    $domain,
+                ),
+            );
+        }
+
+        if ($originalAdmin === $targetContactHandle || $originalTech === $targetContactHandle) {
+            self::markTestSkipped(
+                \sprintf(
+                    'Skipping domain reassignment scenario: target contact "%s" is already assigned on domain "%s".',
+                    $targetContactHandle,
+                    $domain,
+                ),
+            );
+        }
+
+        if (null === $extensionPayload) {
+            self::markTestSkipped(
+                \sprintf(
+                    'Skipping domain reassignment scenario: unable to resolve required domain extension values'
+                    . ' for "%s".',
+                    $domain,
+                ),
+            );
+        }
+
+        return [
+            'extensionPayload' => $extensionPayload,
+            'originalAdmin' => $originalAdmin,
+            'originalTech' => $originalTech,
+        ];
+    }
+
+    /**
+     * @param non-empty-string $domain
+     * @param 'admin'|'tech' $type
+     * @param non-empty-string $expectedHandle
+     */
+    private function assertDomainContactTypeHandle(string $domain, string $type, string $expectedHandle): void
+    {
+        $domainInfo = $this->client()->domain()->info($domain);
+
+        self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
+        self::assertSame(
+            $expectedHandle,
+            $this->firstContactHandleByType($domainInfo['contacts'], $type),
+        );
+    }
+
+    private function nonEmptyStringOrNull(mixed $value): ?string
+    {
+        if (!\is_string($value) || '' === \trim($value)) {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function stringOrNull(mixed $value): ?string
+    {
+        if (!\is_string($value)) {
+            return null;
+        }
+
+        return $value;
     }
 }

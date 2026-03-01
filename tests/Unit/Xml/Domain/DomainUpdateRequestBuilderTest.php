@@ -7,6 +7,7 @@ namespace Tests\Unit\Xml\Domain;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Domain\Dto\DomainRegisterContact;
+use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
 use RNIDS\Domain\Dto\DomainUpdateSection;
 use RNIDS\Xml\Domain\DomainUpdateRequestBuilder;
@@ -55,5 +56,32 @@ final class DomainUpdateRequestBuilderTest extends TestCase
             $xml,
         );
         self::assertStringContainsString('<clTRID>TRID&lt;&amp;&gt;</clTRID>', $xml);
+    }
+
+    public function testBuildSerializesRnidsDomainExtensionWhenProvided(): void
+    {
+        $builder = new DomainUpdateRequestBuilder();
+
+        $xml = $builder->build(
+            new DomainUpdateRequest(
+                'example.rs',
+                new DomainUpdateSection([ new DomainRegisterContact('admin', 'ADM-2') ], []),
+                new DomainUpdateSection([ new DomainRegisterContact('admin', 'ADM-1') ], []),
+                null,
+                null,
+                new DomainRegisterExtension('Remark', true, 'normal', false, true),
+            ),
+            'TRID-EXT-1',
+        );
+
+        self::assertStringContainsString(
+            '<domainExt:domain-ext xmlns:domainExt="http://www.rnids.rs/epp/xml/domain-rnids-ext-1.0">',
+            $xml,
+        );
+        self::assertStringContainsString('<domainExt:remark>Remark</domainExt:remark>', $xml);
+        self::assertStringContainsString('<domainExt:isWhoisPrivacy>true</domainExt:isWhoisPrivacy>', $xml);
+        self::assertStringContainsString('<domainExt:operationMode>normal</domainExt:operationMode>', $xml);
+        self::assertStringContainsString('<domainExt:notifyAdmin>false</domainExt:notifyAdmin>', $xml);
+        self::assertStringContainsString('<domainExt:dnsSec>true</domainExt:dnsSec>', $xml);
     }
 }

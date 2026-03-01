@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RNIDS\Xml\Domain;
 
 use RNIDS\Domain\Dto\DomainRegisterContact;
+use RNIDS\Domain\Dto\DomainRegisterExtension;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
 use RNIDS\Domain\Dto\DomainUpdateSection;
 use RNIDS\Xml\NamespaceRegistry;
@@ -27,7 +28,8 @@ final class DomainUpdateRequestBuilder
             . $this->sectionXml('domain:rem', $request->remove)
             . $this->changeXml($request)
             . '</domain:update>'
-            . '</update>';
+            . '</update>'
+            . $this->extensionXml($request->extension);
 
         return XmlComposer::commandEnvelope($xml, $clTrid);
     }
@@ -98,5 +100,52 @@ final class DomainUpdateRequestBuilder
                 ) . '</domain:authInfo>'
                 : '')
             . '</domain:chg>';
+    }
+
+    private function extensionXml(?DomainRegisterExtension $extension): string
+    {
+        if (null === $extension) {
+            return '';
+        }
+
+        $parts = \array_values(\array_filter([
+            $this->extensionRemarkXml($extension->remark),
+            $this->extensionBoolXml('domainExt:isWhoisPrivacy', $extension->isWhoisPrivacy),
+            $this->extensionOperationModeXml($extension->operationMode),
+            $this->extensionBoolXml('domainExt:notifyAdmin', $extension->notifyAdmin),
+            $this->extensionBoolXml('domainExt:dnsSec', $extension->dnsSec),
+        ]));
+
+        if ([] === $parts) {
+            return '';
+        }
+
+        return '<extension>'
+            . '<domainExt:domain-ext xmlns:domainExt="' . NamespaceRegistry::RNIDS_DOMAIN_EXT . '">'
+            . \implode('', $parts)
+            . '</domainExt:domain-ext>'
+            . '</extension>';
+    }
+
+    private function extensionRemarkXml(?string $remark): ?string
+    {
+        return null !== $remark ? XmlComposer::element('domainExt:remark', $remark) : null;
+    }
+
+    private function extensionOperationModeXml(?string $operationMode): ?string
+    {
+        return null !== $operationMode ? XmlComposer::element(
+            'domainExt:operationMode',
+            $operationMode,
+        ) : null;
+    }
+
+    private function extensionBoolXml(string $nodeName, ?bool $value): ?string
+    {
+        if (null === $value) {
+            return null;
+        }
+
+        return XmlComposer::element($nodeName, $value ? 'true' : 'false');
     }
 }
