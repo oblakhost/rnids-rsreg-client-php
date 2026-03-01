@@ -114,6 +114,7 @@ final class ContactServiceTest extends TestCase
         ]);
 
         self::assertStringContainsString('<contact:create', $transport->writtenPayload);
+        self::assertStringContainsString('<contact:id>OBL-C-200</contact:id>', $transport->writtenPayload);
         self::assertSame('C-200', $result['id']);
         self::assertSame('2026-03-01T00:00:00.0Z', $result['createDate']);
     }
@@ -218,6 +219,7 @@ final class ContactServiceTest extends TestCase
         ]);
 
         self::assertStringContainsString('<contact:update', $transport->writtenPayload);
+        self::assertStringContainsString('<contact:id>OBL-C-400</contact:id>', $transport->writtenPayload);
         self::assertSame([], $result);
     }
 

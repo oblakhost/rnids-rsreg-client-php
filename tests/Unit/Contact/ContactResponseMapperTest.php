@@ -81,12 +81,11 @@ final class ContactResponseMapperTest extends TestCase
         $mapper = new ContactResponseMapper();
         $metadata = new ResponseMetadata(1000, 'OK', 'CL-1', 'SV-1');
 
-        self::assertSame([
-            'createDate' => '2026-03-01T00:00:00.0Z',
-            'id' => 'C-200',
-        ], $mapper->mapCreateResponse(
+        $create = $mapper->mapCreateResponse(
             new ContactCreateResponse($metadata, 'C-200', '2026-03-01T00:00:00.0Z'),
-        ));
+        );
+        self::assertSame('C-200', $create['id']);
+        self::assertSame('2026-03-01T00:00:00.0Z', $create['createDate']);
 
         self::assertSame([], $mapper->mapEmptyResponse());
     }

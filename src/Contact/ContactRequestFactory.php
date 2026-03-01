@@ -16,6 +16,15 @@ use RNIDS\Contact\Dto\ContactUpdateRequest;
  */
 final class ContactRequestFactory
 {
+    public const ENFORCED_IDENT_DESCRIPTION = 'Object Creation provided by Oblak Solutions.';
+
+    private ContactIdPolicy $contactIdPolicy;
+
+    public function __construct(?ContactIdPolicy $contactIdPolicy = null)
+    {
+        $this->contactIdPolicy = $contactIdPolicy ?? new ContactIdPolicy();
+    }
+
     /**
      * @param array{ids?: mixed} $request
      */
@@ -39,11 +48,7 @@ final class ContactRequestFactory
     public function createFromArray(array $request): ContactCreateRequest
     {
         return new ContactCreateRequest(
-            $this->requireString(
-                $request,
-                'id',
-                'Contact create request key "%s" must be a non-empty string.',
-            ),
+            $this->contactIdPolicy->normalizeForCreate($request['id'] ?? null),
             $this->requirePostalInfo($request),
             $this->optionalNullableString($request, 'voice'),
             $this->optionalNullableString($request, 'fax'),
@@ -54,7 +59,7 @@ final class ContactRequestFactory
             ),
             $this->optionalNullableString($request, 'authInfo'),
             $this->optionalDisclose($request),
-            $this->optionalExtension($request),
+            $this->optionalExtension($request, true),
         );
     }
 
@@ -75,11 +80,7 @@ final class ContactRequestFactory
     public function updateFromArray(array $request): ContactUpdateRequest
     {
         $dto = new ContactUpdateRequest(
-            $this->requireString(
-                $request,
-                'id',
-                'Contact update request key "%s" must be a non-empty string.',
-            ),
+            $this->contactIdPolicy->normalizeForUpdate($request['id'] ?? null),
             $this->optionalStatuses($request, 'addStatuses'),
             $this->optionalStatuses($request, 'removeStatuses'),
             $this->optionalPostalInfo($request),
@@ -88,7 +89,7 @@ final class ContactRequestFactory
             $this->optionalNullableString($request, 'email'),
             $this->optionalNullableString($request, 'authInfo'),
             $this->optionalDisclose($request),
-            $this->optionalExtension($request),
+            $this->optionalExtension($request, true),
         );
 
         if (
@@ -295,7 +296,7 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $request
      */
-    private function optionalExtension(array $request): ?ContactExtension
+    private function optionalExtension(array $request, bool $forceIdentDescription): ?ContactExtension
     {
         $extension = $request['extension'] ?? null;
 
@@ -309,9 +310,15 @@ final class ContactRequestFactory
             );
         }
 
+        $identDescription = $this->optionalNullableString($extension, 'identDescription');
+
+        if ($forceIdentDescription) {
+            $identDescription = self::ENFORCED_IDENT_DESCRIPTION;
+        }
+
         return new ContactExtension(
             $this->optionalNullableString($extension, 'ident'),
-            $this->optionalNullableString($extension, 'identDescription'),
+            $identDescription,
             $this->optionalNullableString($extension, 'identExpiry'),
             $this->optionalNullableString($extension, 'identKind'),
             $this->optionalNullableString($extension, 'isLegalEntity'),
