@@ -19,15 +19,56 @@ final class XmlParser
     public static function createXPath(string $xml): \DOMXPath
     {
         $document = new \DOMDocument();
+        $previousErrorMode = \libxml_use_internal_errors(true);
+        \libxml_clear_errors();
 
-        if (true !== @$document->loadXML($xml)) {
-            throw new \RNIDS\Exception\MalformedResponseException('EPP response contains malformed XML.');
+        try {
+            if (true !== $document->loadXML($xml)) {
+                throw new \RNIDS\Exception\MalformedResponseException(
+                    self::buildMalformedXmlMessage(\libxml_get_errors()),
+                );
+            }
+        } finally {
+            \libxml_clear_errors();
+            \libxml_use_internal_errors($previousErrorMode);
         }
 
         $xpath = new \DOMXPath($document);
         NamespaceRegistry::registerXpathNamespaces($xpath);
 
         return $xpath;
+    }
+
+    /**
+     * @param list<\LibXMLError> $errors
+     */
+    private static function buildMalformedXmlMessage(array $errors): string
+    {
+        $baseMessage = 'EPP response contains malformed XML';
+
+        if ([] === $errors) {
+            return $baseMessage . '.';
+        }
+
+        $firstError = $errors[0];
+        $normalizedMessage = self::normalizeLibXmlMessage($firstError->message);
+
+        if ('' === $normalizedMessage) {
+            return \sprintf('%s (line %d, column %d).', $baseMessage, $firstError->line, $firstError->column);
+        }
+
+        return \sprintf(
+            '%s: %s (line %d, column %d).',
+            $baseMessage,
+            $normalizedMessage,
+            $firstError->line,
+            $firstError->column,
+        );
+    }
+
+    private static function normalizeLibXmlMessage(string $message): string
+    {
+        return \trim((string) \preg_replace('/\s+/', ' ', \trim($message)));
     }
 
     /**
