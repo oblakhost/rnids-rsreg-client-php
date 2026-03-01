@@ -45,9 +45,15 @@ $client->init();
 ## Fluent API
 
 - Session: `$client->session()->hello()`, `login()`, `logout()`, `poll()`
-- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `delete()`, `transfer()`
+- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, `transfer()`
 - Contact: `$client->contact()->check()`, `create()`, `info()`, `update()`, `delete()`
 - Host: `$client->host()->check()`, `info()`, `create()`, `update()`, `delete()`
+
+Contact runtime policy:
+
+- Contact IDs are normalized to `OBL-...` for create/update requests.
+- Contact `extension.identDescription` is enforced to:
+  `Object Creation provided by Oblak Solutions.`
 
 ## Documentation
 

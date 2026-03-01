@@ -82,6 +82,34 @@ Response shape:
 array{name: string|null, expirationDate: string|null}
 ```
 
+### `update(array $request): array{}`
+
+Updates an existing domain object.
+
+Common use case:
+
+- Reassigning admin/tech contact handles via `add.contacts` / `remove.contacts`.
+
+Request shape:
+
+```php
+array{
+  name: mixed,
+  add?: array{
+    contacts?: list<array{type: 'admin'|'tech'|'billing', handle: non-empty-string}>,
+    statuses?: list<non-empty-string>
+  },
+  remove?: array{
+    contacts?: list<array{type: 'admin'|'tech'|'billing', handle: non-empty-string}>,
+    statuses?: list<non-empty-string>
+  },
+  registrant?: mixed,
+  authInfo?: mixed
+}
+```
+
+At least one mutation key must be present: `add`, `remove`, `registrant`, or `authInfo`.
+
 ### `delete(string $name): array{}`
 
 Deletes a domain.

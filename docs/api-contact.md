@@ -28,6 +28,13 @@ list<array{
 
 Creates a contact object.
 
+Policy behavior:
+
+- `id` is optional. If omitted/empty, library auto-generates a contact ID.
+- Contact IDs are normalized to the `OBL-` prefix before sending create commands.
+- `extension.identDescription` is enforced to:
+  `Object Creation provided by Oblak Solutions.`
+
 Response shape:
 
 ```php
@@ -83,6 +90,12 @@ array{
 Updates contact statuses and/or contact data.
 
 At least one mutation field must be provided.
+
+Policy behavior:
+
+- `id` is required and normalized to the `OBL-` prefix before sending update commands.
+- `extension.identDescription` is enforced to:
+  `Object Creation provided by Oblak Solutions.`
 
 ### `delete(string $id): array{}`
 
