@@ -55,6 +55,12 @@ final class HostService
 
     /**
      * Creates a host service with optional test doubles for execution and DTO mapping.
+     *
+     * @param Transport $transport Connected transport used to send and receive EPP frames.
+     * @param CommandExecutor|null $executor Optional command executor override for tests.
+     * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
+     * @param HostRequestFactory|null $requestFactory Optional request DTO factory override.
+     * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
      */
     public function __construct(
         Transport $transport,
@@ -79,9 +85,12 @@ final class HostService
     }
 
     /**
+     * Checks one or more host names for availability.
+     *
      * @param array{names?: mixed}|list<mixed>|non-empty-string $request
      *
      * @return list<array{name: string, available: bool, reason: string|null}>
+     *   Availability data for each requested host name.
      */
     public function check(string|array $request): array
     {
@@ -107,6 +116,10 @@ final class HostService
     }
 
     /**
+     * Retrieves detailed host information.
+     *
+     * @param string $name Host name to query.
+     *
      * @return array{
      *   name: string|null,
      *   roid: string|null,
@@ -118,7 +131,7 @@ final class HostService
      *   createDate: string|null,
      *   updateDate: string|null,
      *   transferDate: string|null
-     * }
+     * } Parsed host info response including statuses and host addresses.
      */
     public function info(string $name): array
     {
@@ -160,9 +173,13 @@ final class HostService
     }
 
     /**
-     * @param array{name?: mixed, addresses?: mixed}|non-empty-string $request
+     * Creates a host object using full payload or simplified name/IP arguments.
      *
-     * @return array{name: string|null, createDate: string|null}
+     * @param array{name?: mixed, addresses?: mixed}|non-empty-string $request
+     * @param string|null $ipv4 Optional IPv4 address for the simplified API variant.
+     * @param string|null $ipv6 Optional IPv6 address for the simplified API variant.
+     *
+     * @return array{name: string|null, createDate: string|null} Host creation result metadata.
      */
     public function create(string|array $request, ?string $ipv4 = null, ?string $ipv6 = null): array
     {
@@ -186,9 +203,11 @@ final class HostService
     }
 
     /**
+     * Updates an existing host object.
+     *
      * @param array{name?: mixed, add?: mixed, remove?: mixed, newName?: mixed} $request
      *
-     * @return array{}
+     * @return array{} Empty array on successful host update command completion.
      */
     public function update(array $request): array
     {
@@ -207,7 +226,11 @@ final class HostService
     }
 
     /**
-     * @return array{}
+     * Deletes a host object by name.
+     *
+     * @param string $name Host name to delete.
+     *
+     * @return array{} Empty array on successful host delete command completion.
      */
     public function delete(string $name): array
     {

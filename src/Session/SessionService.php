@@ -43,8 +43,12 @@ final class SessionService
     private PollResponseParser $pollResponseParser;
 
     /**
+     * Creates a session service for hello/login/logout/poll command flows.
+     *
+     * @param Transport $transport Connected transport used to send and receive EPP frames.
      * @param CommandExecutor|null $executor Optional command executor override for tests.
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
+     * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
      */
     public function __construct(
         Transport $transport,
@@ -65,6 +69,8 @@ final class SessionService
     }
 
     /**
+     * Performs EPP login and initializes an authenticated session state.
+     *
      * @param array{
      *   clientId: non-empty-string,
      *   password: non-empty-string,
@@ -72,9 +78,9 @@ final class SessionService
      *   language?: non-empty-string,
      *   objectUris?: list<non-empty-string>,
      *   extensionUris?: list<non-empty-string>
-     * } $request
+     * } $request Session login payload with credentials and optional service menu declarations.
      *
-     * @return array{}
+     * @return array{} Empty array on successful login command completion.
      */
     public function login(array $request): array
     {
@@ -100,6 +106,8 @@ final class SessionService
     }
 
     /**
+     * Requests server greeting data and supported object/extension capabilities.
+     *
      * @return array{
      *   extensionUris: list<string>,
      *   languages: list<string>,
@@ -107,7 +115,7 @@ final class SessionService
      *   serverDate: string|null,
      *   serverId: string|null,
      *   versions: list<string>
-     * }
+     * } Parsed hello response payload with server identity and supported protocol menu.
      */
     public function hello(): array
     {
@@ -128,7 +136,9 @@ final class SessionService
     }
 
     /**
-     * @return array{}
+     * Performs EPP logout and closes the authenticated server session.
+     *
+     * @return array{} Empty array on successful logout command completion.
      */
     public function logout(): array
     {
@@ -144,6 +154,8 @@ final class SessionService
     }
 
     /**
+     * Executes a poll request to fetch queue data or acknowledge a queue message.
+     *
      * @param array{messageId?: mixed, operation?: mixed} $request
      *
      * @return array{
@@ -151,7 +163,7 @@ final class SessionService
      *   message: string|null,
      *   messageId: string|null,
      *   queueDate: string|null
-     * }
+     * } Poll queue metadata including message details for req/ack operations.
      */
     public function poll(array $request = []): array
     {

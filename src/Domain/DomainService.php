@@ -74,9 +74,13 @@ final class DomainService
     }
 
     /**
+     * Creates a domain service for RNIDS domain lifecycle operations.
+     *
+     * @param Transport $transport Connected transport used to send and receive EPP frames.
      * @param CommandExecutor|null $executor Optional command executor override for tests.
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
      * @param DomainRegisterRequestFactory|null $registerRequestFactory Optional request factory override.
+     * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
      */
     public function __construct(
         Transport $transport,
@@ -103,9 +107,12 @@ final class DomainService
     }
 
     /**
+     * Checks one or more domain names for registration availability.
+     *
      * @param array{names?: mixed}|list<mixed>|non-empty-string $request
      *
      * @return list<array{name: string, available: bool, reason: string|null}>
+     *   Availability data for each requested domain name.
      */
     public function check(string|array $request): array
     {
@@ -131,6 +138,11 @@ final class DomainService
     }
 
     /**
+     * Retrieves detailed domain information, including RNIDS extension fields.
+     *
+     * @param string $name Fully qualified domain name to query.
+     * @param string|null $hosts Optional host selection mode (all|del|sub|none).
+     *
      * @return array{
      *   name: string|null,
      *   roid: string|null,
@@ -151,7 +163,7 @@ final class DomainService
      *     dnsSec: string|null,
      *     remark: string|null
      *   }
-     * }
+     * } Parsed domain info response with core and RNIDS-specific fields.
      */
     public function info(string $name, ?string $hosts = null): array
     {
@@ -211,6 +223,8 @@ final class DomainService
     }
 
     /**
+     * Registers a domain using either the full request shape or simplified arguments.
+     *
      * @param array{
      *   name?: mixed,
      *   period?: mixed,
@@ -235,6 +249,7 @@ final class DomainService
      * }|null $extension
      *
      * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
+     *   Key creation metadata returned by the registry.
      */
     public function register(
         string|array $request,
@@ -276,14 +291,18 @@ final class DomainService
     }
 
     /**
+     * Renews a domain by explicit payload or simplified name/years arguments.
+     *
      * @param array{
      *   name?: mixed,
      *   currentExpirationDate?: mixed,
      *   period?: mixed,
      *   periodUnit?: mixed
      * }|non-empty-string $request
+     * @param int|null $years Renewal period used by the simplified API variant.
      *
      * @return array{name: string|null, expirationDate: string|null}
+     *   Renew response summary for the domain object.
      */
     public function renew(string|array $request, ?int $years = null): array
     {
@@ -312,7 +331,11 @@ final class DomainService
     }
 
     /**
-     * @return array{}
+     * Deletes a domain object by name.
+     *
+     * @param string $name Fully qualified domain name to delete.
+     *
+     * @return array{} Empty array on successful domain delete command completion.
      */
     public function delete(string $name): array
     {
@@ -331,6 +354,8 @@ final class DomainService
     }
 
     /**
+     * Executes a domain transfer operation (request/query/cancel/approve/reject).
+     *
      * @param array{
      *   operation?: mixed,
      *   name?: mixed,
@@ -347,7 +372,7 @@ final class DomainService
      *   actionClientId: string|null,
      *   actionDate: string|null,
      *   expirationDate: string|null
-     * }
+     * } Transfer response details for the requested operation.
      */
     public function transfer(array $request): array
     {

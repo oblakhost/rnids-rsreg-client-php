@@ -53,6 +53,15 @@ final class ContactService
 
     private ContactDeleteResponseParser $deleteResponseParser;
 
+    /**
+     * Creates a contact service for RNIDS contact lifecycle operations.
+     *
+     * @param Transport $transport Connected transport used to send and receive EPP frames.
+     * @param CommandExecutor|null $executor Optional command executor override for tests.
+     * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
+     * @param ContactRequestFactory|null $requestFactory Optional request DTO factory override.
+     * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
+     */
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
@@ -76,9 +85,12 @@ final class ContactService
     }
 
     /**
+     * Checks one or more contact identifiers for availability.
+     *
      * @param array{ids?: mixed}|list<mixed>|non-empty-string $request
      *
      * @return list<array{id: string, available: bool, reason: string|null}>
+     *   Availability data for each requested contact identifier.
      */
     public function check(string|array $request): array
     {
@@ -104,6 +116,8 @@ final class ContactService
     }
 
     /**
+     * Creates a new contact object.
+     *
      * @param array{
      *   id?: mixed,
      *   postalInfo?: mixed,
@@ -113,9 +127,9 @@ final class ContactService
      *   authInfo?: mixed,
      *   disclose?: mixed,
      *   extension?: mixed
-     * } $request
+     * } $request Contact create payload containing required identity/address fields and optional extension data.
      *
-     * @return array{id: string|null, createDate: string|null}
+     * @return array{id: string|null, createDate: string|null} Contact creation result metadata.
      */
     public function create(array $request): array
     {
@@ -137,6 +151,10 @@ final class ContactService
     }
 
     /**
+     * Retrieves detailed contact information including RNIDS extension fields.
+     *
+     * @param string $id Contact identifier to query.
+     *
      * @return array{
      *   id: string|null,
      *   roid: string|null,
@@ -171,7 +189,7 @@ final class ContactService
      *     isLegalEntity: string|null,
      *     vatNo: string|null
      *   }
-     * }
+     * } Parsed contact info response with core and RNIDS-specific values.
      */
     public function info(string $id): array
     {
@@ -240,6 +258,8 @@ final class ContactService
     }
 
     /**
+     * Updates an existing contact object.
+     *
      * @param array{
      *   id?: mixed,
      *   addStatuses?: mixed,
@@ -251,9 +271,9 @@ final class ContactService
      *   authInfo?: mixed,
      *   disclose?: mixed,
      *   extension?: mixed
-     * } $request
+     * } $request Contact update payload describing add/remove/change operations.
      *
-     * @return array{}
+     * @return array{} Empty array on successful contact update command completion.
      */
     public function update(array $request): array
     {
@@ -272,7 +292,11 @@ final class ContactService
     }
 
     /**
-     * @return array{}
+     * Deletes a contact object by identifier.
+     *
+     * @param string $id Contact identifier to delete.
+     *
+     * @return array{} Empty array on successful contact delete command completion.
      */
     public function delete(string $id): array
     {

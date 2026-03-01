@@ -127,7 +127,10 @@ final class Client
     }
 
     /**
+     * Creates and initializes a connected, authenticated RNIDS EPP client instance.
+     *
      * @param array<string, mixed> $config
+     *   Client configuration including host/credentials and optional TLS/runtime settings.
      */
     public function __construct(array $config)
     {
@@ -265,7 +268,7 @@ final class Client
      *   message: string,
      *   resultCode: int,
      *   serverTransactionId: string|null
-     * }|null
+     * }|null Latest parsed response metadata, or null when no response has been parsed yet.
      */
     public function responseMeta(): ?array
     {
