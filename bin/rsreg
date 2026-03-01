@@ -247,7 +247,7 @@ try {
         ),
     );
 
-    $client = new RNIDS\Client($config);
+    $client = RNIDS\Client::ready($config);
 
     $response = match ($command) {
         'domain:info' => $client->domain()->info(trim($argument)),

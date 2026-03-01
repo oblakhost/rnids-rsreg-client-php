@@ -16,7 +16,10 @@ use RNIDS\Xml\Response\LastResponseMetadata;
 
 final class Client
 {
-    private ?Transport $transport = null;
+    /** @var array<string, mixed> */
+    private array $config;
+
+    private Transport $transport;
 
     private SessionService $sessionService;
 
@@ -27,6 +30,10 @@ final class Client
     private HostService $hostService;
 
     private LastResponseMetadata $lastResponseMetadata;
+
+    private ?\Throwable $lastCloseError = null;
+
+    private bool $initialized = false;
 
     private bool $loggedIn = false;
 
@@ -127,13 +134,27 @@ final class Client
     }
 
     /**
-     * Creates and initializes a connected, authenticated RNIDS EPP client instance.
+     * Creates, initializes, and returns a ready-to-use client instance.
+     *
+     * @param array<string, mixed> $config
+     */
+    public static function ready(array $config): self
+    {
+        $client = new self($config);
+        $client->init();
+
+        return $client;
+    }
+
+    /**
+     * Creates a client instance with validated configuration and prepared services.
      *
      * @param array<string, mixed> $config
      *   Client configuration including host/credentials and optional TLS/runtime settings.
      */
     public function __construct(array $config)
     {
+        $this->config = $config;
         $this->transport = (new Builder(
             new ConnectionConfig(
                 self::requireString($config, 'host'),
@@ -162,32 +183,6 @@ final class Client
             transport: $this->transport,
             lastResponseMetadata: $this->lastResponseMetadata,
         );
-        $this->transport->connect();
-        $this->sessionService->hello();
-        $this->sessionService->login([
-            'clientId' => self::requireString($config, 'username'),
-            'extensionUris' => self::optionalStringList(
-                $config,
-                'extensionUris',
-                [
-                    NamespaceRegistry::RNIDS,
-                ],
-            ),
-            'language' => self::optionalString($config, 'language', 'en'),
-            'objectUris' => self::optionalStringList(
-                $config,
-                'objectUris',
-                [
-                    NamespaceRegistry::DOMAIN,
-                    NamespaceRegistry::CONTACT,
-                    NamespaceRegistry::HOST,
-                ],
-            ),
-            'password' => self::requireString($config, 'password'),
-            'version' => self::optionalString($config, 'version', '1.0'),
-        ]);
-
-        $this->loggedIn = true;
     }
 
     /**
@@ -195,15 +190,15 @@ final class Client
      */
     public function __destruct()
     {
-        $this->close();
+        $this->closeInternal(true);
     }
 
     /**
-     * Returns the active transport instance.
+     * Returns the configured transport instance.
      */
     public function transport(): Transport
     {
-        return $this->transport ?? throw new \RuntimeException('Transport is not initialized.');
+        return $this->transport;
     }
 
     /**
@@ -211,21 +206,54 @@ final class Client
      */
     public function close(): void
     {
-        if (null === $this->transport) {
+        $this->closeInternal(false);
+    }
+
+    /**
+     * Connects transport and authenticates the session with hello and login commands.
+     */
+    public function init(): void
+    {
+        if (true === $this->initialized) {
             return;
         }
 
-        if (true === $this->loggedIn) {
-            try {
-                $this->sessionService->logout();
-            } catch (\Throwable) {
-            }
-
+        try {
+            $this->transport->connect();
+            $this->sessionService->hello();
+            $this->sessionService->login([
+                'clientId' => self::requireString($this->config, 'username'),
+                'extensionUris' => self::optionalStringList(
+                    $this->config,
+                    'extensionUris',
+                    [
+                        NamespaceRegistry::RNIDS,
+                    ],
+                ),
+                'language' => self::optionalString($this->config, 'language', 'en'),
+                'objectUris' => self::optionalStringList(
+                    $this->config,
+                    'objectUris',
+                    [
+                        NamespaceRegistry::DOMAIN,
+                        NamespaceRegistry::CONTACT,
+                        NamespaceRegistry::HOST,
+                    ],
+                ),
+                'password' => self::requireString($this->config, 'password'),
+                'version' => self::optionalString($this->config, 'version', '1.0'),
+            ]);
+        } catch (\Throwable $throwable) {
             $this->loggedIn = false;
+            $this->initialized = false;
+            $this->transport->disconnect();
+
+            throw $throwable;
         }
 
-        $this->transport->disconnect();
-        $this->transport = null;
+        $this->loggedIn = true;
+        $this->initialized = true;
+        $this->lastCloseError = null;
     }
 
     /**
@@ -233,6 +261,8 @@ final class Client
      */
     public function session(): SessionService
     {
+        $this->assertInitialized();
+
         return $this->sessionService;
     }
 
@@ -241,6 +271,8 @@ final class Client
      */
     public function domain(): DomainService
     {
+        $this->assertInitialized();
+
         return $this->domainService;
     }
 
@@ -249,6 +281,8 @@ final class Client
      */
     public function contact(): ContactService
     {
+        $this->assertInitialized();
+
         return $this->contactService;
     }
 
@@ -257,6 +291,8 @@ final class Client
      */
     public function host(): HostService
     {
+        $this->assertInitialized();
+
         return $this->hostService;
     }
 
@@ -284,6 +320,82 @@ final class Client
             'resultCode' => $metadata->resultCode,
             'serverTransactionId' => $metadata->serverTransactionId,
         ];
+    }
+
+    /**
+     * Returns the last close/destructor error when a shutdown step failed.
+     */
+    public function lastCloseError(): ?\Throwable
+    {
+        return $this->lastCloseError;
+    }
+
+    private function assertInitialized(): void
+    {
+        if (true === $this->initialized) {
+            return;
+        }
+
+        throw new \RuntimeException('Client is not initialized. Call init() first or use Client::ready().');
+    }
+
+    private function closeInternal(bool $suppressExceptions): void
+    {
+        if (true !== $this->initialized) {
+            return;
+        }
+
+        $error = $this->logoutAndCaptureError();
+        $error = $this->disconnectAndCaptureError($error);
+        $this->initialized = false;
+        $this->finalizeClose($error, $suppressExceptions);
+    }
+
+    private function logoutAndCaptureError(): ?\Throwable
+    {
+        if (true !== $this->loggedIn) {
+            return null;
+        }
+
+        try {
+            $this->sessionService->logout();
+        } catch (\Throwable $throwable) {
+            $this->loggedIn = false;
+
+            return $throwable;
+        }
+
+        $this->loggedIn = false;
+
+        return null;
+    }
+
+    private function disconnectAndCaptureError(?\Throwable $error): ?\Throwable
+    {
+        try {
+            $this->transport->disconnect();
+        } catch (\Throwable $throwable) {
+            if (null === $error) {
+                return $throwable;
+            }
+        }
+
+        return $error;
+    }
+
+    private function finalizeClose(?\Throwable $error, bool $suppressExceptions): void
+    {
+        if (null === $error) {
+            $this->lastCloseError = null;
+
+            return;
+        }
+
+        $this->lastCloseError = $error;
+
+        if (true !== $suppressExceptions) {
+            throw $error;
+        }
     }
 
     /**

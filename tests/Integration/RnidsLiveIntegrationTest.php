@@ -21,7 +21,7 @@ final class RnidsLiveIntegrationTest extends TestCase
         IntegrationConfig::ensureReadyOrSkip();
 
         try {
-            self::$client = new Client(IntegrationConfig::clientConfig());
+            self::$client = Client::ready(IntegrationConfig::clientConfig());
         } catch (\Throwable $throwable) {
             throw new \PHPUnit\Framework\SkippedTestSuiteError(
                 \sprintf('Unable to initialize RNIDS live client: %s', $throwable->getMessage()),

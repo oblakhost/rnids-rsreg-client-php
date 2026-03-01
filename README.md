@@ -19,7 +19,7 @@ declare(strict_types=1);
 
 use RNIDS\Client;
 
-$client = new Client([
+$client = Client::ready([
     'host' => 'epp.example.rs',
     'port' => 700,
     'username' => 'client-id',
@@ -33,6 +33,13 @@ $domainInfo = $client->domain()->info('example.rs');
 $meta = $client->responseMeta();
 
 $client->close();
+```
+
+If you need explicit lifecycle control:
+
+```php
+$client = new Client([...]);
+$client->init();
 ```
 
 ## Fluent API
@@ -63,6 +70,12 @@ Successful operations return typed/normalized data arrays from service methods, 
 
 $client->responseMeta();
 ```
+
+Shutdown behavior:
+
+- Explicit `$client->close()` may throw on logout/disconnect failure.
+- Automatic destructor shutdown is non-throwing.
+- Inspect `$client->lastCloseError()` for the last shutdown failure, if any.
 
 ## Development
 
