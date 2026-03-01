@@ -12,6 +12,7 @@ vendor/
 *.pfx
 *.crt
 *.key
+!tests/fixtures/dummy-client-cert.pem
 
 # Integration test local fixtures (never commit)
 tests/Fixtures/ca-cert.php

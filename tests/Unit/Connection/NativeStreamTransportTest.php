@@ -31,7 +31,7 @@ final class NativeStreamTransportTest extends TestCase
         $transport = new NativeStreamTransport(
             new ConnectionConfig('epp-test.rnids.rs', 700, 1, 1),
             new TlsConfig(
-                __DIR__ . '/../../fixtures/oblak.pem',
+                __DIR__ . '/../../fixtures/dummy-client-cert.pem',
                 null,
                 '/this/path/does/not/exist/ca.pem',
             ),
@@ -73,7 +73,7 @@ final class NativeStreamTransportTest extends TestCase
     {
         $transport = new NativeStreamTransport(
             new ConnectionConfig('invalid.host.for.rnids.test', 700, 1, 1),
-            new TlsConfig(__DIR__ . '/../../fixtures/oblak.pem'),
+            new TlsConfig(__DIR__ . '/../../fixtures/dummy-client-cert.pem'),
         );
 
         $this->expectException(\RuntimeException::class);
