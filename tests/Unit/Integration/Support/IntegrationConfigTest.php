@@ -130,6 +130,38 @@ final class IntegrationConfigTest extends TestCase
         self::assertFalse($config['tls']['verifyPeerName']);
     }
 
+    public function testEnsureReadyOrFailThrowsWhenUsernameMissing(): void
+    {
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+        $this->setEnv('RNIDS_EPP_USERNAME', '');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Missing required environment variable "RNIDS_EPP_USERNAME"');
+
+        IntegrationConfig::ensureReadyOrFail();
+    }
+
+    public function testEnsureReadyOrFailThrowsWhenPasswordMissing(): void
+    {
+        $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
+        $this->setEnv('RNIDS_EPP_PASSWORD', '');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Missing required environment variable "RNIDS_EPP_PASSWORD"');
+
+        IntegrationConfig::ensureReadyOrFail();
+    }
+
+    public function testEnsureReadyOrFailPassesWhenMinimumEnvironmentIsConfigured(): void
+    {
+        $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+
+        IntegrationConfig::ensureReadyOrFail();
+
+        self::assertTrue(true);
+    }
+
     protected function tearDown(): void
     {
         foreach ($this->originalEnvValues as $key => $value) {

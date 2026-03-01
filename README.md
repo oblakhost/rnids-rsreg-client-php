@@ -106,10 +106,16 @@ Shutdown behavior:
 
 ## Development
 
-Run quality gates:
+Default test gate (strict, includes live RNIDS integration suites):
 
 ```bash
-vendor/bin/phpcs
-vendor/bin/phpstan analyse
-vendor/bin/phpunit
+composer test
+```
+
+`composer test` fails when RNIDS live credentials/certificates/connectivity are not working.
+
+Local/offline development gate (no live integration dependency):
+
+```bash
+composer test:local
 ```

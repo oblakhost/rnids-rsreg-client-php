@@ -39,6 +39,12 @@
   "scripts": {
     "phpcs": "vendor/bin/phpcs",
     "phpstan": "vendor/bin/phpstan analyse",
+    "test:unit": "vendor/bin/phpunit --testsuite unit",
+    "test:local": [
+      "@test:unit",
+      "@phpstan",
+      "@phpcs"
+    ],
     "test": "vendor/bin/phpunit"
   }
 }

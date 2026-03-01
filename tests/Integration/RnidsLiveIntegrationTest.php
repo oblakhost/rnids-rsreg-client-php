@@ -18,17 +18,8 @@ final class RnidsLiveIntegrationTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        IntegrationConfig::ensureReadyOrSkip();
-
-        try {
-            self::$client = Client::ready(IntegrationConfig::clientConfig());
-        } catch (\Throwable $throwable) {
-            throw new \PHPUnit\Framework\SkippedTestSuiteError(
-                \sprintf('Unable to initialize RNIDS live client: %s', $throwable->getMessage()),
-                (int) $throwable->getCode(),
-                $throwable,
-            );
-        }
+        IntegrationConfig::ensureReadyOrFail();
+        self::$client = Client::ready(IntegrationConfig::clientConfig());
     }
 
     public static function tearDownAfterClass(): void
@@ -63,7 +54,7 @@ final class RnidsLiveIntegrationTest extends TestCase
      */
     public function testDomainRegisterCreatesUniqueDomain(): string
     {
-        IntegrationConfig::ensureRegisterReadyOrSkip();
+        IntegrationConfig::ensureRegisterReadyOrFail();
 
         $domain = IntegrationConfig::uniqueRegisterDomainName();
         $registerRequest = IntegrationConfig::domainRegisterRequest($domain);

@@ -18,17 +18,8 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        IntegrationConfig::ensureReadyOrSkip();
-
-        try {
-            self::$client = Client::ready(IntegrationConfig::clientConfig());
-        } catch (\Throwable $throwable) {
-            throw new \PHPUnit\Framework\SkippedTestSuiteError(
-                \sprintf('Unable to initialize RNIDS live client: %s', $throwable->getMessage()),
-                (int) $throwable->getCode(),
-                $throwable,
-            );
-        }
+        IntegrationConfig::ensureReadyOrFail();
+        self::$client = Client::ready(IntegrationConfig::clientConfig());
     }
 
     public static function tearDownAfterClass(): void
@@ -93,8 +84,8 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         $techChanged = false;
 
         try {
-            $this->ensureTargetContactExistsOrSkip($targetContactHandle);
-            $context = $this->domainReassignmentContextOrSkip($domain, $targetContactHandle);
+            $this->ensureTargetContactExistsOrFail($targetContactHandle);
+            $context = $this->domainReassignmentContextOrFail($domain, $targetContactHandle);
 
             $this->reassignDomainContact(
                 $domain,
@@ -283,14 +274,14 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
     /**
      * @param non-empty-string $targetContactHandle
      */
-    private function ensureTargetContactExistsOrSkip(string $targetContactHandle): void
+    private function ensureTargetContactExistsOrFail(string $targetContactHandle): void
     {
         try {
             $this->client()->contact()->info($targetContactHandle);
         } catch (\Throwable $throwable) {
-            self::markTestSkipped(
+            self::fail(
                 \sprintf(
-                    'Skipping domain reassignment scenario: target contact "%s" is unavailable (%s).',
+                    'Domain reassignment scenario requires target contact "%s" to exist. Details: %s',
                     $targetContactHandle,
                     $throwable->getMessage(),
                 ),
@@ -314,7 +305,7 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
      *   }
      * }
      */
-    private function domainReassignmentContextOrSkip(string $domain, string $targetContactHandle): array
+    private function domainReassignmentContextOrFail(string $domain, string $targetContactHandle): array
     {
         $initialInfo = $this->client()->domain()->info($domain);
         self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
@@ -324,18 +315,18 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         $extensionPayload = $this->domainUpdateExtensionPayload($initialInfo);
 
         if (null === $originalAdmin || null === $originalTech) {
-            self::markTestSkipped(
+            self::fail(
                 \sprintf(
-                    'Skipping domain reassignment scenario: domain "%s" must have both admin and tech contacts.',
+                    'Domain reassignment scenario requires domain "%s" to have both admin and tech contacts.',
                     $domain,
                 ),
             );
         }
 
         if ($originalAdmin === $targetContactHandle || $originalTech === $targetContactHandle) {
-            self::markTestSkipped(
+            self::fail(
                 \sprintf(
-                    'Skipping domain reassignment scenario: target contact "%s" is already assigned on domain "%s".',
+                    'Domain reassignment scenario requires target contact "%s" to be different from current contacts on domain "%s".',
                     $targetContactHandle,
                     $domain,
                 ),
@@ -343,10 +334,9 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         }
 
         if (null === $extensionPayload) {
-            self::markTestSkipped(
+            self::fail(
                 \sprintf(
-                    'Skipping domain reassignment scenario: unable to resolve required domain extension values'
-                    . ' for "%s".',
+                    'Domain reassignment scenario requires resolvable domain extension values for "%s".',
                     $domain,
                 ),
             );

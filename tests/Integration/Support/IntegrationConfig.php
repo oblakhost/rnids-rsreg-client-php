@@ -87,15 +87,15 @@ final class IntegrationConfig
         return $domain;
     }
 
-    public static function ensureReadyOrSkip(): void
+    public static function ensureReadyOrFail(): void
     {
-        self::ensureEnvOrSkip('RNIDS_EPP_USERNAME');
-        self::ensureEnvOrSkip('RNIDS_EPP_PASSWORD');
-        self::ensureFileOrSkip(self::clientCertificatePath(), 'RNIDS client certificate');
-        self::ensureFileOrSkip(self::caCertificatePath(), 'RNIDS CA certificate');
+        self::ensureEnvOrFail('RNIDS_EPP_USERNAME');
+        self::ensureEnvOrFail('RNIDS_EPP_PASSWORD');
+        self::ensureFileOrFail(self::clientCertificatePath(), 'RNIDS client certificate');
+        self::ensureFileOrFail(self::caCertificatePath(), 'RNIDS CA certificate');
     }
 
-    public static function ensureRegisterReadyOrSkip(): void
+    public static function ensureRegisterReadyOrFail(): void
     {
         // Register contact handles now fall back to test contact defaults.
     }
@@ -323,25 +323,25 @@ final class IntegrationConfig
         return null;
     }
 
-    private static function ensureEnvOrSkip(string $name): void
+    private static function ensureEnvOrFail(string $name): void
     {
         $value = \getenv($name);
 
         if (!\is_string($value) || '' === \trim($value)) {
-            throw new \PHPUnit\Framework\SkippedTestSuiteError(
-                \sprintf('Missing required environment variable "%s" for RNIDS integration tests.', $name),
+            throw new \RuntimeException(
+                \sprintf('Missing required environment variable "%s" for RNIDS live integration tests.', $name),
             );
         }
     }
 
-    private static function ensureFileOrSkip(string $path, string $label): void
+    private static function ensureFileOrFail(string $path, string $label): void
     {
         if (\is_file($path) && \is_readable($path)) {
             return;
         }
 
-        throw new \PHPUnit\Framework\SkippedTestSuiteError(
-            \sprintf('Missing readable %s file at "%s".', $label, $path),
+        throw new \RuntimeException(
+            \sprintf('Missing readable %s file at "%s" for RNIDS live integration tests.', $label, $path),
         );
     }
 
