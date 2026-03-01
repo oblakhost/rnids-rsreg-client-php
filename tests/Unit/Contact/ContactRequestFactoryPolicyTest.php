@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Contact;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Contact\ContactRequestFactory;
@@ -11,98 +12,170 @@ use RNIDS\Contact\ContactRequestFactory;
 #[Group('unit')]
 final class ContactRequestFactoryPolicyTest extends TestCase
 {
-    public function testCreateGeneratesOblPrefixedIdWhenMissing(): void
+    /**
+     * @return iterable<string, array{id: mixed, expectedPrefixOrValue: string, expectExact: bool}>
+     */
+    public static function createIdNormalizationProvider(): iterable
     {
-        $factory = new ContactRequestFactory();
-
-        $request = $factory->createFromArray([
-            'email' => 'person@example.rs',
-            'postalInfo' => [
-                'address' => [
-                    'city' => 'Belgrade',
-                    'countryCode' => 'RS',
-                    'streets' => [ 'Main 1' ],
-                ],
-                'name' => 'Person Example',
-            ],
-        ]);
-
-        self::assertStringStartsWith('OBL-', $request->id);
-    }
-
-    public function testCreateNormalizesIdPrefixWhenMissingOblPrefix(): void
-    {
-        $factory = new ContactRequestFactory();
-
-        $request = $factory->createFromArray([
-            'email' => 'person@example.rs',
+        yield 'missing id generates policy id' => [
+            'expectedPrefixOrValue' => 'OBL-',
+            'expectExact' => false,
+            'id' => null,
+        ];
+        yield 'whitespace id generates policy id' => [
+            'expectedPrefixOrValue' => 'OBL-',
+            'expectExact' => false,
+            'id' => '   ',
+        ];
+        yield 'non prefixed id is normalized' => [
+            'expectedPrefixOrValue' => 'OBL-C-200',
+            'expectExact' => true,
             'id' => 'C-200',
-            'postalInfo' => [
-                'address' => [
-                    'city' => 'Belgrade',
-                    'countryCode' => 'RS',
-                    'streets' => [ 'Main 1' ],
-                ],
-                'name' => 'Person Example',
-            ],
-        ]);
-
-        self::assertSame('OBL-C-200', $request->id);
+        ];
+        yield 'prefixed id is preserved' => [
+            'expectedPrefixOrValue' => 'OBL-C-200',
+            'expectExact' => true,
+            'id' => 'OBL-C-200',
+        ];
     }
 
-    public function testCreateKeepsOblPrefixedIdUntouched(): void
+    /**
+     * @return iterable<string, array{id: string, expected: string}>
+     */
+    public static function updateIdNormalizationProvider(): iterable
+    {
+        yield 'non prefixed id is normalized' => [
+            'expected' => 'OBL-C-400',
+            'id' => 'C-400',
+        ];
+        yield 'prefixed id is preserved' => [
+            'expected' => 'OBL-C-400',
+            'id' => 'OBL-C-400',
+        ];
+    }
+
+    /**
+     * @return iterable<string, array{id: mixed}>
+     */
+    public static function invalidUpdateIdProvider(): iterable
+    {
+        yield 'missing id' => [ 'id' => null ];
+        yield 'empty id' => [ 'id' => '' ];
+        yield 'whitespace id' => [ 'id' => '  ' ];
+        yield 'non string id' => [ 'id' => 123 ];
+    }
+
+    /**
+     * @return iterable<string, list<string|null>>
+     */
+    public static function forcedIdentDescriptionProvider(): iterable
+    {
+        yield 'null caller value' => [ null ];
+        yield 'explicit caller value' => [ 'Caller value' ];
+    }
+
+    #[DataProvider('createIdNormalizationProvider')]
+    public function testCreateIdNormalization(string $expectedPrefixOrValue, bool $expectExact, mixed $id): void
     {
         $factory = new ContactRequestFactory();
 
-        $request = $factory->createFromArray([
-            'email' => 'person@example.rs',
-            'id' => 'OBL-C-200',
-            'postalInfo' => [
-                'address' => [
-                    'city' => 'Belgrade',
-                    'countryCode' => 'RS',
-                    'streets' => [ 'Main 1' ],
-                ],
-                'name' => 'Person Example',
-            ],
-        ]);
+        $payload = $this->validCreatePayload();
+        $payload['id'] = $id;
 
-        self::assertSame('OBL-C-200', $request->id);
+        if (null === $id) {
+            unset($payload['id']);
+        }
+
+        $request = $factory->createFromArray($payload);
+
+        if ($expectExact) {
+            self::assertSame($expectedPrefixOrValue, $request->id);
+
+            return;
+        }
+
+        self::assertStringStartsWith($expectedPrefixOrValue, $request->id);
     }
 
-    public function testUpdateNormalizesIdPrefixWhenMissingOblPrefix(): void
+    #[DataProvider('updateIdNormalizationProvider')]
+    public function testUpdateIdNormalization(string $expected, string $id): void
     {
         $factory = new ContactRequestFactory();
 
         $request = $factory->updateFromArray([
             'email' => 'updated@example.rs',
-            'id' => 'C-400',
+            'id' => $id,
         ]);
 
-        self::assertSame('OBL-C-400', $request->id);
+        self::assertSame($expected, $request->id);
     }
 
-    public function testUpdateWithoutIdStillFailsWithDeterministicError(): void
+    #[DataProvider('invalidUpdateIdProvider')]
+    public function testUpdateRejectsInvalidIdsWithDeterministicError(mixed $id): void
     {
         $factory = new ContactRequestFactory();
+        $payload = [ 'email' => 'updated@example.rs', 'id' => $id ];
+
+        if (null === $id) {
+            unset($payload['id']);
+        }
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Contact update request key "id" must be a non-empty string.');
 
-        $factory->updateFromArray([
-            'email' => 'updated@example.rs',
-        ]);
+        $factory->updateFromArray($payload);
     }
 
-    public function testCreateExtensionIdentDescriptionIsForcedToPolicyValue(): void
+    #[DataProvider('forcedIdentDescriptionProvider')]
+    public function testCreateExtensionIdentDescriptionIsForcedToPolicyValue(?string $callerValue): void
+    {
+        $factory = new ContactRequestFactory();
+        $payload = $this->validCreatePayload();
+        $payload['extension'] = [ 'identDescription' => $callerValue ];
+
+        $request = $factory->createFromArray($payload);
+
+        self::assertNotNull($request->extension);
+        self::assertSame(
+            ContactRequestFactory::ENFORCED_IDENT_DESCRIPTION,
+            $request->extension->identDescription,
+        );
+    }
+
+    #[DataProvider('forcedIdentDescriptionProvider')]
+    public function testUpdateExtensionIdentDescriptionIsForcedToPolicyValue(?string $callerValue): void
     {
         $factory = new ContactRequestFactory();
 
-        $request = $factory->createFromArray([
-            'email' => 'person@example.rs',
+        $request = $factory->updateFromArray([
+            'email' => 'updated@example.rs',
             'extension' => [
-                'identDescription' => 'Caller value',
+                'identDescription' => $callerValue,
             ],
+            'id' => 'C-400',
+        ]);
+
+        self::assertNotNull($request->extension);
+        self::assertSame(
+            ContactRequestFactory::ENFORCED_IDENT_DESCRIPTION,
+            $request->extension->identDescription,
+        );
+    }
+
+    /**
+     * @return array{
+     *   email: string,
+     *   id: string,
+     *   postalInfo: array{
+     *     address: array{city: string, countryCode: string, streets: list<string>},
+     *     name: string
+     *   }
+     * }
+     */
+    private function validCreatePayload(): array
+    {
+        return [
+            'email' => 'person@example.rs',
             'id' => 'C-200',
             'postalInfo' => [
                 'address' => [
@@ -112,31 +185,6 @@ final class ContactRequestFactoryPolicyTest extends TestCase
                 ],
                 'name' => 'Person Example',
             ],
-        ]);
-
-        self::assertNotNull($request->extension);
-        self::assertSame(
-            'Object Creation provided by Oblak Solutions.',
-            $request->extension->identDescription,
-        );
-    }
-
-    public function testUpdateExtensionIdentDescriptionIsForcedToPolicyValue(): void
-    {
-        $factory = new ContactRequestFactory();
-
-        $request = $factory->updateFromArray([
-            'email' => 'updated@example.rs',
-            'extension' => [
-                'identDescription' => 'Caller value',
-            ],
-            'id' => 'C-400',
-        ]);
-
-        self::assertNotNull($request->extension);
-        self::assertSame(
-            'Object Creation provided by Oblak Solutions.',
-            $request->extension->identDescription,
-        );
+        ];
     }
 }
