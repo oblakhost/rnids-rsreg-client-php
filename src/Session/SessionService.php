@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace RNIDS\Session;
 
 use RNIDS\Connection\Transport;
-use RNIDS\Session\Dto\LoginRequest;
-use RNIDS\Session\Dto\PollRequest;
 use RNIDS\Xml\ClTrid\ClTridGenerator;
 use RNIDS\Xml\ClTrid\IncrementalClTridGenerator;
 use RNIDS\Xml\CommandExecutor;
@@ -25,6 +23,10 @@ final class SessionService
     private CommandExecutor $executor;
 
     private ClTridGenerator $tridGenerator;
+
+    private SessionInputNormalizer $inputNormalizer;
+
+    private SessionResponseMapper $responseMapper;
 
     private HelloRequestBuilder $helloRequestBuilder;
 
@@ -49,15 +51,21 @@ final class SessionService
      * @param CommandExecutor|null $executor Optional command executor override for tests.
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
      * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
+     * @param SessionInputNormalizer|null $inputNormalizer Optional input normalizer override.
+     * @param SessionResponseMapper|null $responseMapper Optional response mapper override.
      */
     public function __construct(
         Transport $transport,
         ?CommandExecutor $executor = null,
         ?ClTridGenerator $tridGenerator = null,
         ?LastResponseMetadata $lastResponseMetadata = null,
+        ?SessionInputNormalizer $inputNormalizer = null,
+        ?SessionResponseMapper $responseMapper = null,
     ) {
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('SESSION');
+        $this->inputNormalizer = $inputNormalizer ?? new SessionInputNormalizer();
+        $this->responseMapper = $responseMapper ?? new SessionResponseMapper();
         $this->helloRequestBuilder = new HelloRequestBuilder();
         $this->helloResponseParser = new HelloResponseParser();
         $this->loginRequestBuilder = new LoginRequestBuilder();
@@ -85,14 +93,7 @@ final class SessionService
     public function login(array $request): array
     {
         $xml = $this->loginRequestBuilder->build(
-            new LoginRequest(
-                clientId: $this->requireString($request, 'clientId'),
-                password: $this->requireString($request, 'password'),
-                version: $this->optionalString($request, 'version', '1.0'),
-                language: $this->optionalString($request, 'language', 'en'),
-                objectUris: $this->optionalStringList($request, 'objectUris'),
-                extensionUris: $this->optionalStringList($request, 'extensionUris'),
-            ),
+            $this->inputNormalizer->buildLoginRequest($request),
             $this->tridGenerator->nextId(),
         );
 
@@ -102,7 +103,7 @@ final class SessionService
                 $this->loginResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
+        return $this->responseMapper->mapEmptyResponse();
     }
 
     /**
@@ -125,14 +126,7 @@ final class SessionService
                 $this->helloResponseParser->parse($responseXml, $metadata),
         );
 
-        return [
-            'extensionUris' => $response->extensionUris,
-            'languages' => $response->languages,
-            'objectUris' => $response->objectUris,
-            'serverDate' => $response->serverDate,
-            'serverId' => $response->serverId,
-            'versions' => $response->versions,
-        ];
+        return $this->responseMapper->mapHelloResponse($response);
     }
 
     /**
@@ -150,7 +144,7 @@ final class SessionService
                 $this->logoutResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
+        return $this->responseMapper->mapEmptyResponse();
     }
 
     /**
@@ -167,8 +161,10 @@ final class SessionService
      */
     public function poll(array $request = []): array
     {
-        $pollRequest = $this->buildPollRequest($request);
-        $xml = $this->pollRequestBuilder->build($pollRequest, $this->tridGenerator->nextId());
+        $xml = $this->pollRequestBuilder->build(
+            $this->inputNormalizer->buildPollRequest($request),
+            $this->tridGenerator->nextId(),
+        );
 
         $response = $this->executor->execute(
             $xml,
@@ -176,131 +172,6 @@ final class SessionService
                 $this->pollResponseParser->parse($responseXml, $metadata),
         );
 
-        return [
-            'count' => $response->queueCount,
-            'message' => $response->message,
-            'messageId' => $response->messageId,
-            'queueDate' => $response->queueDate,
-        ];
-    }
-
-    /**
-     * @param array<string, mixed> $request
-     */
-    private function requireString(array $request, string $key): string
-    {
-        $value = $request[$key] ?? null;
-
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Session request key "%s" must be a non-empty string.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $request
-     */
-    private function optionalString(array $request, string $key, string $default): string
-    {
-        $value = $request[$key] ?? null;
-
-        if (null === $value) {
-            return $default;
-        }
-
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Session request key "%s" must be a non-empty string.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $request
-     *
-     * @return list<string>
-     */
-    private function optionalStringList(array $request, string $key): array
-    {
-        $value = $request[$key] ?? null;
-
-        if (null === $value) {
-            return [];
-        }
-
-        if (!\is_array($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Session request key "%s" must be a list of strings.', $key),
-            );
-        }
-
-        $result = [];
-
-        foreach ($value as $item) {
-            if (!\is_string($item) || '' === \trim($item)) {
-                throw new \InvalidArgumentException(
-                    \sprintf('Session request key "%s" must contain only non-empty strings.', $key),
-                );
-            }
-
-            $result[] = $item;
-        }
-
-        return $result;
-    }
-
-    /**
-     * @param array{messageId?: mixed, operation?: mixed} $request
-     */
-    private function buildPollRequest(array $request): PollRequest
-    {
-        $operation = $this->optionalPollOperation($request);
-
-        if ('ack' === $operation) {
-            return new PollRequest($operation, $this->requireString($request, 'messageId'));
-        }
-
-        return new PollRequest($operation, $this->optionalNullableString($request, 'messageId'));
-    }
-
-    /**
-     * @param array<string, mixed> $request
-     */
-    private function optionalNullableString(array $request, string $key): ?string
-    {
-        $value = $request[$key] ?? null;
-
-        if (null === $value) {
-            return null;
-        }
-
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Session request key "%s" must be a non-empty string when provided.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array{operation?: mixed} $request
-     */
-    private function optionalPollOperation(array $request): string
-    {
-        $operation = $request['operation'] ?? 'req';
-
-        if (!\is_string($operation) || !\in_array($operation, [ 'req', 'ack' ], true)) {
-            throw new \InvalidArgumentException(
-                'Session poll request key "operation" must be either "req" or "ack".',
-            );
-        }
-
-        return $operation;
+        return $this->responseMapper->mapPollResponse($response);
     }
 }
