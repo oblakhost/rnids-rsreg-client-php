@@ -1,23 +1,36 @@
-# RNIDS / RSreg EPP Client
+<div align="center">
 
-Modern PHP 8.1+ client library for RNIDS/RSreg EPP integration.
+<h1 align="center" style="border-bottom: none; margin-bottom: 0px">RNIDS / RSreg EPP Client</h1>
+<h3 align="center" style="margin-top: 0px">Modern Dependency-Safe PHP Client for RNIDS Registry EPP</h3>
 
-This package provides a fluent, RNIDS-first API with deterministic XML generation, typed DTOs internally, and predictable command execution over native stream transport.
+[![Packagist Version](https://img.shields.io/packagist/v/rnids/rsreg-epp-client?label=Release&style=flat-square)](https://packagist.org/packages/rnids/rsreg-epp-client)
+![Packagist PHP Version](https://img.shields.io/packagist/dependency-v/rnids/rsreg-epp-client/php?label=PHP&logo=php&logoColor=white&logoSize=auto&style=flat-square)
+![Static Badge](https://img.shields.io/badge/RNIDS-RSreg-3858e9?style=flat-square)
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/oblakhost/rnids-rsreg-client-php/release.yml?label=Build&event=push&style=flat-square&logo=githubactions&logoColor=white&logoSize=auto)](https://github.com/oblakhost/rnids-rsreg-client-php/actions/workflows/release.yml)
+
+</div>
+
+This library provides a fluent, RNIDS-first implementation of the EPP protocol for PHP 8.1+ applications.
+It focuses on deterministic XML handling, typed request/response modeling, strict transport behavior, and predictable command execution for RNIDS/RSreg environments.
+
+## Key Features
+
+1. RNIDS-first API design with fluent entry points for session, domain, contact, and host operations.
+2. Deterministic EPP request lifecycle over native stream transport and frame codec boundaries.
+3. Typed service-layer DTOs and normalized response mapping for reliable integrations.
+4. Explicit protocol/transport exception strategy under `RNIDS\Exception\*`.
+5. Separate XML composition/parsing modules for easier testing and maintenance.
+6. Coverage-aware quality gate with static analysis and coding standards checks.
 
 ## Installation
+
+Install via Composer:
 
 ```bash
 composer require rnids/rsreg-epp-client
 ```
 
-## Requirements
-
-- PHP 8.1+
-- `ext-json`
-- Network access to RNIDS/RSreg EPP endpoint
-- TLS certificates configured in client config when required by your environment
-
-## Quick Start
+## Usage
 
 ```php
 <?php
@@ -35,46 +48,22 @@ $client = Client::ready([
 ]);
 
 $domainInfo = $client->domain()->info('example.rs');
-
-// Optional metadata from the latest EPP response:
 $meta = $client->responseMeta();
 
 $client->close();
 ```
 
-Minimum config keys for first run:
-
-- `host`
-- `username`
-- `password`
-
-Common optional keys:
-
-- `port` (default `700`)
-- `language` (default `en`)
-- `version` (default `1.0`)
-- `objectUris`, `extensionUris`
-- `tls` options (`localCertPath`, `localPkPath`, `passphrase`, `caFile`, `verifyPeer`, `verifyPeerName`, `allowSelfSigned`, `peerName`)
-
-If you need explicit lifecycle control:
-
-```php
-$client = new Client([...]);
-$client->init();
-```
-
-## Fluent API
+Common fluent entry points:
 
 - Session: `$client->session()->hello()`, `login()`, `logout()`, `poll()`
 - Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, `transfer()`
 - Contact: `$client->contact()->check()`, `create()`, `info()`, `update()`, `delete()`
 - Host: `$client->host()->check()`, `info()`, `create()`, `update()`, `delete()`
 
-Contact runtime policy:
+Runtime contact policy:
 
-- Contact IDs are normalized to `OBL-...` for create/update requests.
-- Contact `extension.identDescription` is enforced to:
-  `Object Creation provided by Oblak Solutions.`
+- Contact IDs are normalized to `OBL-...` for create/update flows.
+- Contact `extension.identDescription` is enforced to `Object Creation provided by Oblak Solutions.`
 
 ## Documentation
 
@@ -86,62 +75,10 @@ Contact runtime policy:
 - Host API: [`docs/api-host.md`](docs/api-host.md)
 - EPP Protocol Reference: [`docs/epp-protocol/epp-reference-index.md`](docs/epp-protocol/epp-reference-index.md)
 
-## Error Handling
+## Contributing
 
-Protocol and transport issues are surfaced as exceptions from `RNIDS\Exception\*`.
+For local setup, quality gates, commit conventions, and PR guidelines, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
-Successful operations return typed/normalized data arrays from service methods, while low-level response context is available via:
+## License
 
-```php
-<?php
-
-$client->responseMeta();
-```
-
-Shutdown behavior:
-
-- Explicit `$client->close()` may throw on logout/disconnect failure.
-- Automatic destructor shutdown is non-throwing.
-- Inspect `$client->lastCloseError()` for the last shutdown failure, if any.
-
-## Development
-
-Default local test gate (offline-safe):
-
-```bash
-composer test
-```
-
-Expanded local quality gate (equivalent behavior):
-
-```bash
-composer test:local
-```
-
-Live RNIDS integration suites only:
-
-```bash
-composer test:live
-```
-
-Live suites run preflight checks for required environment variables, certificate files,
-DNS, and TCP endpoint reachability. If prerequisites are missing, suites are skipped with
-an explicit reason instead of failing the default local workflow.
-
-Local coverage gate (unit tests + threshold):
-
-```bash
-composer test:coverage
-```
-
-`test:coverage` enables `pcov` explicitly (`php -d pcov.enabled=1`) and enforces the
-line-coverage threshold using `build/coverage.xml`.
-
-Codecov/CI coverage artifact command:
-
-```bash
-composer test:coverage:ci
-```
-
-`test:coverage:ci` writes Clover XML to `build/coverage.xml` (ready for upload) and
-applies the same strict threshold gate.
+Apache-2.0. See [`LICENSE`](LICENSE).
