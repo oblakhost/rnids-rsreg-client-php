@@ -33,6 +33,10 @@ final class ContactService
 
     private ContactRequestFactory $requestFactory;
 
+    private ContactInputNormalizer $inputNormalizer;
+
+    private ContactResponseMapper $responseMapper;
+
     private ContactCheckRequestBuilder $checkRequestBuilder;
 
     private ContactCheckResponseParser $checkResponseParser;
@@ -61,6 +65,8 @@ final class ContactService
      * @param ClTridGenerator|null $tridGenerator Optional client transaction id generator override.
      * @param ContactRequestFactory|null $requestFactory Optional request DTO factory override.
      * @param LastResponseMetadata|null $lastResponseMetadata Optional shared holder for last parsed response metadata.
+     * @param ContactInputNormalizer|null $inputNormalizer Optional input normalizer override.
+     * @param ContactResponseMapper|null $responseMapper Optional response mapper override.
      */
     public function __construct(
         Transport $transport,
@@ -68,10 +74,14 @@ final class ContactService
         ?ClTridGenerator $tridGenerator = null,
         ?ContactRequestFactory $requestFactory = null,
         ?LastResponseMetadata $lastResponseMetadata = null,
+        ?ContactInputNormalizer $inputNormalizer = null,
+        ?ContactResponseMapper $responseMapper = null,
     ) {
         $this->executor = $executor ?? new CommandExecutor($transport, null, $lastResponseMetadata);
         $this->tridGenerator = $tridGenerator ?? new IncrementalClTridGenerator('CONTACT');
         $this->requestFactory = $requestFactory ?? new ContactRequestFactory();
+        $this->inputNormalizer = $inputNormalizer ?? new ContactInputNormalizer();
+        $this->responseMapper = $responseMapper ?? new ContactResponseMapper();
         $this->checkRequestBuilder = new ContactCheckRequestBuilder();
         $this->checkResponseParser = new ContactCheckResponseParser();
         $this->createRequestBuilder = new ContactCreateRequestBuilder();
@@ -95,7 +105,7 @@ final class ContactService
     public function check(string|array $request): array
     {
         $xml = $this->checkRequestBuilder->build(
-            $this->requestFactory->checkFromArray($this->normalizeCheckRequest($request)),
+            $this->requestFactory->checkFromArray($this->inputNormalizer->normalizeCheckRequest($request)),
             $this->tridGenerator->nextId(),
         );
 
@@ -105,14 +115,7 @@ final class ContactService
                 $this->checkResponseParser->parse($responseXml, $metadata),
         );
 
-        return \array_map(
-            static fn(\RNIDS\Contact\Dto\ContactCheckItem $item): array => [
-                'available' => $item->available,
-                'id' => $item->id,
-                'reason' => $item->reason,
-            ],
-            $response->items,
-        );
+        return $this->responseMapper->mapCheckResponse($response);
     }
 
     /**
@@ -144,10 +147,7 @@ final class ContactService
                 $this->createResponseParser->parse($responseXml, $metadata),
         );
 
-        return [
-            'createDate' => $response->createDate,
-            'id' => $response->id,
-        ];
+        return $this->responseMapper->mapCreateResponse($response);
     }
 
     /**
@@ -193,12 +193,8 @@ final class ContactService
      */
     public function info(string $id): array
     {
-        if ('' === \trim($id)) {
-            throw new \InvalidArgumentException('Contact id must be a non-empty string.');
-        }
-
         $xml = $this->infoRequestBuilder->build(
-            new ContactInfoRequest($id),
+            new ContactInfoRequest($this->inputNormalizer->requireContactId($id)),
             $this->tridGenerator->nextId(),
         );
 
@@ -208,53 +204,7 @@ final class ContactService
                 $this->infoResponseParser->parse($responseXml, $metadata),
         );
 
-        $postalInfo = null;
-
-        if (null !== $response->postalInfo) {
-            $postalInfo = [
-                'address' => [
-                    'city' => $response->postalInfo->address->city,
-                    'countryCode' => $response->postalInfo->address->countryCode,
-                    'postalCode' => $response->postalInfo->address->postalCode,
-                    'province' => $response->postalInfo->address->province,
-                    'streets' => $response->postalInfo->address->streets,
-                ],
-                'name' => $response->postalInfo->name,
-                'organization' => $response->postalInfo->organization,
-                'type' => $response->postalInfo->type,
-            ];
-        }
-
-        return [
-            'clientId' => $response->clientId,
-            'createClientId' => $response->createClientId,
-            'createDate' => $response->createDate,
-            'disclose' => $response->disclose,
-            'email' => $response->email,
-            'extension' => [
-                'ident' => $response->extension->ident,
-                'identDescription' => $response->extension->identDescription,
-                'identExpiry' => $response->extension->identExpiry,
-                'identKind' => $response->extension->identKind,
-                'isLegalEntity' => $response->extension->isLegalEntity,
-                'vatNo' => $response->extension->vatNo,
-            ],
-            'fax' => $response->fax,
-            'id' => $response->id,
-            'postalInfo' => $postalInfo,
-            'roid' => $response->roid,
-            'statuses' => \array_map(
-                static fn(\RNIDS\Contact\Dto\ContactStatus $status): array => [
-                    'description' => $status->description,
-                    'value' => $status->value,
-                ],
-                $response->statuses,
-            ),
-            'transferDate' => $response->transferDate,
-            'updateClientId' => $response->updateClientId,
-            'updateDate' => $response->updateDate,
-            'voice' => $response->voice,
-        ];
+        return $this->responseMapper->mapInfoResponse($response);
     }
 
     /**
@@ -288,7 +238,7 @@ final class ContactService
                 $this->updateResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
+        return $this->responseMapper->mapEmptyResponse();
     }
 
     /**
@@ -300,12 +250,8 @@ final class ContactService
      */
     public function delete(string $id): array
     {
-        if ('' === \trim($id)) {
-            throw new \InvalidArgumentException('Contact id must be a non-empty string.');
-        }
-
         $xml = $this->deleteRequestBuilder->build(
-            new ContactDeleteRequest($id),
+            new ContactDeleteRequest($this->inputNormalizer->requireContactId($id)),
             $this->tridGenerator->nextId(),
         );
 
@@ -315,60 +261,6 @@ final class ContactService
                 $this->deleteResponseParser->parse($responseXml, $metadata),
         );
 
-        return [];
-    }
-
-    /**
-     * @param array{ids?: mixed}|list<mixed>|non-empty-string $request
-     *
-     * @return array{ids: list<string>}
-     */
-    private function normalizeCheckRequest(string|array $request): array
-    {
-        if (\is_string($request)) {
-            return [ 'ids' => [ $this->requireCheckId($request) ] ];
-        }
-
-        if (isset($request['ids'])) {
-            return [ 'ids' => $request['ids'] ];
-        }
-
-        return [ 'ids' => $this->normalizeCheckIdsList($request) ];
-    }
-
-    private function requireCheckId(string $id): string
-    {
-        if ('' === \trim($id)) {
-            throw new \InvalidArgumentException('Contact check id must be a non-empty string.');
-        }
-
-        return $id;
-    }
-
-    /**
-     * @param list<mixed> $request
-     *
-     * @return list<string>
-     */
-    private function normalizeCheckIdsList(array $request): array
-    {
-        if ([] === $request) {
-            return [];
-        }
-
-        return [
-            ...\array_values(\array_map(
-                static function (mixed $value): string {
-                    if (!\is_string($value) || '' === \trim($value)) {
-                        throw new \InvalidArgumentException(
-                            'Contact check request list must contain only non-empty strings.',
-                        );
-                    }
-
-                    return $value;
-                },
-                $request,
-            )),
-        ];
+        return $this->responseMapper->mapEmptyResponse();
     }
 }
