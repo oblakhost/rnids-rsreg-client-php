@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace RNIDS;
 
-use RNIDS\Connection\ConnectionConfig;
-use RNIDS\Connection\TlsConfig;
+use RNIDS\Config\ClientConfig;
+use RNIDS\Config\ClientConfigFactory;
 use RNIDS\Connection\Transport;
+use RNIDS\Connection\TransportFactory;
 use RNIDS\Contact\ContactService;
 use RNIDS\Domain\DomainService;
 use RNIDS\Host\HostService;
 use RNIDS\Session\SessionService;
-use RNIDS\Xml\NamespaceRegistry;
 use RNIDS\Xml\Response\LastResponseMetadata;
 
 final class Client
 {
-    /** @var array<string, mixed> */
-    private array $config;
+    private ClientConfig $clientConfig;
 
     private Transport $transport;
 
@@ -36,102 +35,6 @@ final class Client
     private bool $initialized = false;
 
     private bool $loggedIn = false;
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    private static function requireString(array $config, string $key): string
-    {
-        $value = $config[$key] ?? null;
-
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Client config key "%s" must be a non-empty string.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    private static function optionalString(array $config, string $key, string $default): string
-    {
-        $value = $config[$key] ?? null;
-
-        if (null === $value) {
-            return $default;
-        }
-
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Client config key "%s" must be a non-empty string.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    private static function optionalInt(array $config, string $key, int $default): int
-    {
-        $value = $config[$key] ?? null;
-
-        if (null === $value) {
-            return $default;
-        }
-
-        if (!\is_int($value) || $value <= 0) {
-            throw new \InvalidArgumentException(
-                \sprintf('Client config key "%s" must be a positive integer.', $key),
-            );
-        }
-
-        return $value;
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     * @param list<string> $default
-     *
-     * @return list<string>
-     */
-    private static function optionalStringList(array $config, string $key, array $default): array
-    {
-        $value = $config[$key] ?? null;
-
-        if (null === $value) {
-            return $default;
-        }
-
-        if (!\is_array($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Client config key "%s" must be a list of strings.', $key),
-            );
-        }
-
-        $result = [];
-
-        foreach ($value as $item) {
-            $result[] = self::requireListItemString($key, $item);
-        }
-
-        return $result;
-    }
-
-    private static function requireListItemString(string $key, mixed $value): string
-    {
-        if (!\is_string($value) || '' === \trim($value)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Client config key "%s" must contain only non-empty strings.', $key),
-            );
-        }
-
-        return $value;
-    }
 
     /**
      * Creates, initializes, and returns a ready-to-use client instance.
@@ -154,17 +57,11 @@ final class Client
      */
     public function __construct(array $config)
     {
-        $this->config = $config;
-        $this->transport = (new Builder(
-            new ConnectionConfig(
-                self::requireString($config, 'host'),
-                self::optionalInt($config, 'port', 700),
-                self::optionalInt($config, 'connectTimeoutSeconds', 10),
-                self::optionalInt($config, 'readTimeoutSeconds', 20),
-            ),
-        ))
-            ->withTlsConfig($this->buildTlsConfig($config))
-            ->buildTransport();
+        $this->clientConfig = ClientConfigFactory::fromArray($config);
+        $this->transport = (new TransportFactory())->create(
+            $this->clientConfig->connectionConfig,
+            $this->clientConfig->tlsConfig,
+        );
 
         $this->lastResponseMetadata = new LastResponseMetadata();
         $this->sessionService = new SessionService(
@@ -222,26 +119,12 @@ final class Client
             $this->transport->connect();
             $this->sessionService->hello();
             $this->sessionService->login([
-                'clientId' => self::requireString($this->config, 'username'),
-                'extensionUris' => self::optionalStringList(
-                    $this->config,
-                    'extensionUris',
-                    [
-                        NamespaceRegistry::RNIDS,
-                    ],
-                ),
-                'language' => self::optionalString($this->config, 'language', 'en'),
-                'objectUris' => self::optionalStringList(
-                    $this->config,
-                    'objectUris',
-                    [
-                        NamespaceRegistry::DOMAIN,
-                        NamespaceRegistry::CONTACT,
-                        NamespaceRegistry::HOST,
-                    ],
-                ),
-                'password' => self::requireString($this->config, 'password'),
-                'version' => self::optionalString($this->config, 'version', '1.0'),
+                'clientId' => $this->clientConfig->username,
+                'extensionUris' => $this->clientConfig->extensionUris,
+                'language' => $this->clientConfig->language,
+                'objectUris' => $this->clientConfig->objectUris,
+                'password' => $this->clientConfig->password,
+                'version' => $this->clientConfig->version,
             ]);
         } catch (\Throwable $throwable) {
             $this->loggedIn = false;
@@ -396,55 +279,5 @@ final class Client
         if (true !== $suppressExceptions) {
             throw $error;
         }
-    }
-
-    /**
-     * @param array<string, mixed> $config
-     */
-    private function buildTlsConfig(array $config): ?TlsConfig
-    {
-        $tls = $config['tls'] ?? null;
-
-        if (!\is_array($tls)) {
-            return null;
-        }
-
-        $certPath = $tls['clientCertificatePath'] ?? null;
-
-        if (!\is_string($certPath) || '' === $certPath) {
-            return null;
-        }
-
-        return new TlsConfig(
-            $certPath,
-            $this->tlsOptionalString($tls, 'clientCertificatePassword'),
-            $this->tlsOptionalString($tls, 'caFilePath'),
-            $this->tlsOptionalString($tls, 'peerName'),
-            $this->tlsOptionalBool($tls, 'allowSelfSigned') ?? false,
-            $this->tlsOptionalBool($tls, 'verifyPeer'),
-            $this->tlsOptionalBool($tls, 'verifyPeerName'),
-        );
-    }
-
-    /**
-     * @param array<string, mixed> $tls
-     */
-    private function tlsOptionalString(array $tls, string $key): ?string
-    {
-        $value = $tls[$key] ?? null;
-
-        return \is_string($value) ? $value : null;
-    }
-
-    /**
-     * @param array<string, mixed> $tls
-     */
-    private function tlsOptionalBool(array $tls, string $key): ?bool
-    {
-        if (!\array_key_exists($key, $tls)) {
-            return null;
-        }
-
-        return (bool) $tls[$key];
     }
 }
