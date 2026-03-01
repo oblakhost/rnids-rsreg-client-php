@@ -106,16 +106,42 @@ Shutdown behavior:
 
 ## Development
 
-Default test gate (strict, includes live RNIDS integration suites):
+Default local test gate (offline-safe):
 
 ```bash
 composer test
 ```
 
-`composer test` fails when RNIDS live credentials/certificates/connectivity are not working.
-
-Local/offline development gate (no live integration dependency):
+Expanded local quality gate (equivalent behavior):
 
 ```bash
 composer test:local
 ```
+
+Live RNIDS integration suites only:
+
+```bash
+composer test:live
+```
+
+Live suites run preflight checks for required environment variables, certificate files,
+DNS, and TCP endpoint reachability. If prerequisites are missing, suites are skipped with
+an explicit reason instead of failing the default local workflow.
+
+Local coverage gate (unit tests + threshold):
+
+```bash
+composer test:coverage
+```
+
+`test:coverage` enables `pcov` explicitly (`php -d pcov.enabled=1`) and enforces the
+line-coverage threshold using `build/coverage.xml`.
+
+Codecov/CI coverage artifact command:
+
+```bash
+composer test:coverage:ci
+```
+
+`test:coverage:ci` writes Clover XML to `build/coverage.xml` (ready for upload) and
+applies the same strict threshold gate.
