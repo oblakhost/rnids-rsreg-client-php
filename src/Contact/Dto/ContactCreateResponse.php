@@ -11,7 +11,7 @@ final class ContactCreateResponse
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?string $id,
-        public readonly ?string $createDate,
+        public readonly ?\DateTimeImmutable $createDate,
     ) {
     }
 }

@@ -9,7 +9,7 @@ use RNIDS\Xml\Response\ResponseMetadata;
 final class ContactInfoResponse
 {
     /**
-     * @param list<ContactStatus> $statuses
+     * @param list<string> $statuses
      */
     public function __construct(
         public readonly ResponseMetadata $metadata,
@@ -23,11 +23,16 @@ final class ContactInfoResponse
         public readonly ?string $clientId,
         public readonly ?string $createClientId,
         public readonly ?string $updateClientId,
-        public readonly ?string $createDate,
-        public readonly ?string $updateDate,
-        public readonly ?string $transferDate,
+        public readonly ?\DateTimeImmutable $createDate,
+        public readonly ?\DateTimeImmutable $updateDate,
+        public readonly ?\DateTimeImmutable $transferDate,
         public readonly ?int $disclose,
-        public readonly ContactExtension $extension,
+        public readonly ?string $ident,
+        public readonly ?string $identDescription,
+        public readonly ?string $identExpiry,
+        public readonly ?string $identKind,
+        public readonly bool $legalEntity,
+        public readonly ?string $vatNo,
     ) {
     }
 }

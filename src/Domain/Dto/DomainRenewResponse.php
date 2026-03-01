@@ -13,12 +13,12 @@ final class DomainRenewResponse
 {
     /**
      * @param ?non-empty-string $name
-     * @param ?non-empty-string $expirationDate
+     * @param \DateTimeImmutable|null $expirationDate
      */
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?string $name,
-        public readonly ?string $expirationDate,
+        public readonly ?\DateTimeImmutable $expirationDate,
     ) {
     }
 }

@@ -9,8 +9,7 @@ use RNIDS\Xml\Response\ResponseMetadata;
 final class DomainInfoResponse
 {
     /**
-     * @param list<DomainInfoStatus> $statuses
-     * @param list<DomainInfoContact> $contacts
+     * @param list<string> $statuses
      * @param list<DomainInfoNameserver> $nameservers
      */
     public function __construct(
@@ -19,15 +18,20 @@ final class DomainInfoResponse
         public readonly ?string $roid,
         public readonly array $statuses,
         public readonly ?string $registrant,
-        public readonly array $contacts,
+        public readonly ?string $adminContact,
+        public readonly ?string $techContact,
         public readonly array $nameservers,
         public readonly ?string $clientId,
         public readonly ?string $createClientId,
         public readonly ?string $updateClientId,
-        public readonly ?string $createDate,
-        public readonly ?string $updateDate,
-        public readonly ?string $expirationDate,
-        public readonly DomainInfoExtension $extension,
+        public readonly ?\DateTimeImmutable $createDate,
+        public readonly ?\DateTimeImmutable $updateDate,
+        public readonly ?\DateTimeImmutable $expirationDate,
+        public readonly bool $whoisPrivacy,
+        public readonly ?string $operationMode,
+        public readonly bool $notifyAdmin,
+        public readonly bool $dnsSec,
+        public readonly ?string $remark,
     ) {
     }
 }

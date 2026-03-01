@@ -6,10 +6,8 @@ namespace RNIDS\Domain;
 
 use RNIDS\Domain\Dto\DomainCheckItem;
 use RNIDS\Domain\Dto\DomainCheckResponse;
-use RNIDS\Domain\Dto\DomainInfoContact;
 use RNIDS\Domain\Dto\DomainInfoNameserver;
 use RNIDS\Domain\Dto\DomainInfoResponse;
-use RNIDS\Domain\Dto\DomainInfoStatus;
 use RNIDS\Domain\Dto\DomainRegisterResponse;
 use RNIDS\Domain\Dto\DomainRenewResponse;
 use RNIDS\Domain\Dto\DomainTransferResponse;
@@ -35,70 +33,50 @@ final class DomainResponseMapper
      * @return array{
      *   name: string|null,
      *   roid: string|null,
-     *   statuses: list<array{value: string, description: string|null}>,
+     *   statuses: list<string>,
      *   registrant: string|null,
-     *   contacts: list<array{type: string, handle: string}>,
-     *   nameservers: list<array{name: string, addresses: list<string>}>,
+     *   adminContact: string|null,
+     *   techContact: string|null,
+     *   nameservers: array<string, array{ipv4: list<string>, ipv6: list<string>}>,
      *   clientId: string|null,
      *   createClientId: string|null,
      *   updateClientId: string|null,
-     *   createDate: string|null,
-     *   updateDate: string|null,
-     *   expirationDate: string|null,
-     *   extension: array{
-     *     isWhoisPrivacy: string|null,
-     *     operationMode: string|null,
-     *     notifyAdmin: string|null,
-     *     dnsSec: string|null,
-     *     remark: string|null
-     *   }
+     *   createDate: \DateTimeImmutable|null,
+     *   updateDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null,
+     *   whoisPrivacy: bool,
+     *   operationMode: string|null,
+     *   notifyAdmin: bool,
+     *   dnsSec: bool,
+     *   remark: string|null
      * }
      */
     public function mapInfoResponse(DomainInfoResponse $response): array
     {
         return [
+            'adminContact' => $response->adminContact,
             'clientId' => $response->clientId,
-            'contacts' => \array_map(
-                static fn(DomainInfoContact $contact): array => [
-                    'handle' => $contact->handle,
-                    'type' => $contact->type,
-                ],
-                $response->contacts,
-            ),
             'createClientId' => $response->createClientId,
             'createDate' => $response->createDate,
+            'dnsSec' => $response->dnsSec,
             'expirationDate' => $response->expirationDate,
-            'extension' => [
-                'dnsSec' => $response->extension->dnsSec,
-                'isWhoisPrivacy' => $response->extension->isWhoisPrivacy,
-                'notifyAdmin' => $response->extension->notifyAdmin,
-                'operationMode' => $response->extension->operationMode,
-                'remark' => $response->extension->remark,
-            ],
             'name' => $response->name,
-            'nameservers' => \array_map(
-                static fn(DomainInfoNameserver $nameserver): array => [
-                    'addresses' => $nameserver->addresses,
-                    'name' => $nameserver->name,
-                ],
-                $response->nameservers,
-            ),
+            'nameservers' => $this->mapNameservers($response->nameservers),
+            'notifyAdmin' => $response->notifyAdmin,
+            'operationMode' => $response->operationMode,
             'registrant' => $response->registrant,
+            'remark' => $response->remark,
             'roid' => $response->roid,
-            'statuses' => \array_map(
-                static fn(DomainInfoStatus $status): array => [
-                    'description' => $status->description,
-                    'value' => $status->value,
-                ],
-                $response->statuses,
-            ),
+            'statuses' => $response->statuses,
+            'techContact' => $response->techContact,
             'updateClientId' => $response->updateClientId,
             'updateDate' => $response->updateDate,
+            'whoisPrivacy' => $response->whoisPrivacy,
         ];
     }
 
     /**
-     * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
+     * @return array{name: string|null, createDate: \DateTimeImmutable|null, expirationDate: \DateTimeImmutable|null}
      */
     public function mapRegisterResponse(DomainRegisterResponse $response): array
     {
@@ -110,7 +88,7 @@ final class DomainResponseMapper
     }
 
     /**
-     * @return array{name: string|null, expirationDate: string|null}
+     * @return array{name: string|null, expirationDate: \DateTimeImmutable|null}
      */
     public function mapRenewResponse(DomainRenewResponse $response): array
     {
@@ -133,10 +111,10 @@ final class DomainResponseMapper
      *   name: string|null,
      *   transferStatus: string|null,
      *   requestClientId: string|null,
-     *   requestDate: string|null,
+     *   requestDate: \DateTimeImmutable|null,
      *   actionClientId: string|null,
-     *   actionDate: string|null,
-     *   expirationDate: string|null
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
      * }
      */
     public function mapTransferResponse(DomainTransferResponse $response): array
@@ -150,5 +128,34 @@ final class DomainResponseMapper
             'requestDate' => $response->requestDate,
             'transferStatus' => $response->transferStatus,
         ];
+    }
+
+    /**
+     * @param list<DomainInfoNameserver> $nameservers
+     *
+     * @return array<string, array{ipv4: list<string>, ipv6: list<string>}>
+     */
+    private function mapNameservers(array $nameservers): array
+    {
+        $mapped = [];
+
+        foreach ($nameservers as $nameserver) {
+            $mapped[$nameserver->name] = [
+                'ipv4' => [],
+                'ipv6' => [],
+            ];
+
+            foreach ($nameserver->addresses as $address) {
+                if (\str_contains($address, ':')) {
+                    $mapped[$nameserver->name]['ipv6'][] = $address;
+
+                    continue;
+                }
+
+                $mapped[$nameserver->name]['ipv4'][] = $address;
+            }
+        }
+
+        return $mapped;
     }
 }

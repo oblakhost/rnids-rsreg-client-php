@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Domain;
 
-use RNIDS\Domain\Dto\DomainInfoContact;
-use RNIDS\Domain\Dto\DomainInfoExtension;
 use RNIDS\Domain\Dto\DomainInfoNameserver;
 use RNIDS\Domain\Dto\DomainInfoResponse;
-use RNIDS\Domain\Dto\DomainInfoStatus;
 use RNIDS\Xml\Parser\XmlParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -24,6 +21,7 @@ final class DomainInfoResponseParser
     public function parse(string $xml, ResponseMetadata $metadata): DomainInfoResponse
     {
         $xpath = XmlParser::createXPath($xml);
+        $contacts = $this->parseContactsByType($xpath);
 
         return new DomainInfoResponse(
             $metadata,
@@ -34,29 +32,55 @@ final class DomainInfoResponseParser
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:infData/domain:registrant',
             ),
-            $this->parseContacts($xpath),
+            $contacts['admin'],
+            $contacts['tech'],
             $this->parseNameservers($xpath),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:infData/domain:clID'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:infData/domain:crID'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:infData/domain:upID'),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:infData/domain:crDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:infData/domain:upDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:infData/domain:exDate',
             ),
-            $this->parseExtension($xpath),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:isWhoisPrivacy',
+                ),
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:operationMode',
+            ),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:notifyAdmin',
+                ),
+            ),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:dnsSec',
+                ),
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:remark',
+            ),
         );
     }
 
     /**
-     * @return list<DomainInfoStatus>
+     * @return list<string>
      */
     private function parseStatuses(\DOMXPath $xpath): array
     {
@@ -81,7 +105,7 @@ final class DomainInfoResponseParser
         return $statuses;
     }
 
-    private function parseStatusNode(\DOMNode $node): ?DomainInfoStatus
+    private function parseStatusNode(\DOMNode $node): ?string
     {
         if (!$node instanceof \DOMElement) {
             return null;
@@ -93,23 +117,27 @@ final class DomainInfoResponseParser
             return null;
         }
 
-        $description = \trim($node->textContent);
-
-        return new DomainInfoStatus($value, '' === $description ? null : $description);
+        return $value;
     }
 
     /**
-     * @return list<DomainInfoContact>
+     * @return array{admin: string|null, tech: string|null}
      */
-    private function parseContacts(\DOMXPath $xpath): array
+    private function parseContactsByType(\DOMXPath $xpath): array
     {
         $nodes = $xpath->query('/epp:epp/epp:response/epp:resData/domain:infData/domain:contact');
 
         if (false === $nodes || 0 === $nodes->length) {
-            return [];
+            return [
+                'admin' => null,
+                'tech' => null,
+            ];
         }
 
-        $contacts = [];
+        $contacts = [
+            'admin' => null,
+            'tech' => null,
+        ];
 
         foreach ($nodes as $node) {
             $contact = $this->parseContactNode($node);
@@ -118,13 +146,20 @@ final class DomainInfoResponseParser
                 continue;
             }
 
-            $contacts[] = $contact;
+            if ('admin' !== $contact['type'] && 'tech' !== $contact['type']) {
+                continue;
+            }
+
+            $contacts[$contact['type']] = $contact['handle'];
         }
 
         return $contacts;
     }
 
-    private function parseContactNode(\DOMNode $node): ?DomainInfoContact
+    /**
+     * @return array{type: string, handle: string}|null
+     */
+    private function parseContactNode(\DOMNode $node): ?array
     {
         if (!$node instanceof \DOMElement) {
             return null;
@@ -137,7 +172,10 @@ final class DomainInfoResponseParser
             return null;
         }
 
-        return new DomainInfoContact($type, $handle);
+        return [
+            'handle' => $handle,
+            'type' => $type,
+        ];
     }
 
     /**
@@ -244,29 +282,12 @@ final class DomainInfoResponseParser
         return $values;
     }
 
-    private function parseExtension(\DOMXPath $xpath): DomainInfoExtension
+    private function parseBooleanNode(?string $value): bool
     {
-        return new DomainInfoExtension(
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:isWhoisPrivacy',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:operationMode',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:notifyAdmin',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:dnsSec',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:remark',
-            ),
-        );
+        if (null === $value) {
+            return false;
+        }
+
+        return \in_array(\strtolower(\trim($value)), [ '1', 'true', 'yes' ], true);
     }
 }

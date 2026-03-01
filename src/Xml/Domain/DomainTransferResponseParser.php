@@ -29,16 +29,16 @@ final class DomainTransferResponseParser
                 '/epp:epp/epp:response/epp:resData/domain:trnData/domain:trStatus',
             ),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:trnData/domain:reID'),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:trnData/domain:reDate',
             ),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:trnData/domain:acID'),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:trnData/domain:acDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:trnData/domain:exDate',
             ),

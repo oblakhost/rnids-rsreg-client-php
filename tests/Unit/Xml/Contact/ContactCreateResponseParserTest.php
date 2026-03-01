@@ -30,6 +30,7 @@ final class ContactCreateResponseParserTest extends TestCase
         );
 
         self::assertSame('C-10', $response->id);
-        self::assertSame('2026-03-01T00:00:00.0Z', $response->createDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->createDate);
+        self::assertSame('2026-03-01T00:00:00+00:00', $response->createDate?->format('c'));
     }
 }

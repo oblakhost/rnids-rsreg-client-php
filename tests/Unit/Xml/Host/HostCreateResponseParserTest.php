@@ -30,6 +30,7 @@ final class HostCreateResponseParserTest extends TestCase
         );
 
         self::assertSame('ns1.example.rs', $response->name);
-        self::assertSame('2026-01-01T00:00:00.0Z', $response->createDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->createDate);
+        self::assertSame('2026-01-01T00:00:00+00:00', $response->createDate?->format('c'));
     }
 }

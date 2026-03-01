@@ -24,11 +24,11 @@ final class DomainRegisterResponseParser
         return new DomainRegisterResponse(
             $metadata,
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:creData/domain:name'),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:creData/domain:crDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:creData/domain:exDate',
             ),

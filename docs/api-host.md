@@ -34,14 +34,15 @@ Response shape:
 array{
   name: string|null,
   roid: string|null,
-  statuses: list<array{value: string, description: string|null}>,
-  addresses: list<array{address: string, ipVersion: string}>,
+  statuses: list<string>,
+  ipv4: list<string>,
+  ipv6: list<string>,
   clientId: string|null,
   createClientId: string|null,
   updateClientId: string|null,
-  createDate: string|null,
-  updateDate: string|null,
-  transferDate: string|null
+  createDate: \DateTimeImmutable|null,
+  updateDate: \DateTimeImmutable|null,
+  transferDate: \DateTimeImmutable|null
 }
 ```
 
@@ -58,7 +59,7 @@ $host->create('ns1.example.rs', '192.0.2.10', null);
 Response shape:
 
 ```php
-array{name: string|null, createDate: string|null}
+array{name: string|null, createDate: \DateTimeImmutable|null}
 ```
 
 ### `update(array $request): array{}`

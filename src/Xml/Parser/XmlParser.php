@@ -132,4 +132,22 @@ final class XmlParser
 
         return (int) $value;
     }
+
+    /**
+     * Returns the first node value parsed as DateTimeImmutable or null when absent/invalid.
+     */
+    public static function firstNodeDateTime(\DOMXPath $xpath, string $query): ?\DateTimeImmutable
+    {
+        $value = self::firstNodeValue($xpath, $query);
+
+        if (null === $value || '' === $value) {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value, new \DateTimeZone('UTC'));
+        } catch (\Exception) {
+            return null;
+        }
+    }
 }

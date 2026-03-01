@@ -116,7 +116,8 @@ final class ContactServiceTest extends TestCase
         self::assertStringContainsString('<contact:create', $transport->writtenPayload);
         self::assertStringContainsString('<contact:id>OBL-C-200</contact:id>', $transport->writtenPayload);
         self::assertSame('C-200', $result['id']);
-        self::assertSame('2026-03-01T00:00:00.0Z', $result['createDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['createDate']);
+        self::assertSame('2026-03-01T00:00:00+00:00', $result['createDate']?->format('c'));
     }
 
     public function testInfoSendsContactInfoCommandAndMapsResponse(): void
@@ -175,9 +176,9 @@ final class ContactServiceTest extends TestCase
 
         self::assertStringContainsString('<contact:info', $transport->writtenPayload);
         self::assertSame('C-300', $result['id']);
-        self::assertSame('ok', $result['statuses'][0]['value']);
+        self::assertSame('ok', $result['statuses'][0]);
         self::assertSame('Belgrade', $result['postalInfo']['address']['city']);
-        self::assertSame('12345', $result['extension']['ident']);
+        self::assertSame('12345', $result['ident']);
     }
 
     public function testUpdateSendsContactUpdateCommandAndReturnsEmptyArray(): void

@@ -13,14 +13,14 @@ final class DomainRegisterResponse
 {
     /**
      * @param ?non-empty-string $name
-     * @param ?non-empty-string $createDate
-     * @param ?non-empty-string $expirationDate
+     * @param \DateTimeImmutable|null $createDate
+     * @param \DateTimeImmutable|null $expirationDate
      */
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?string $name,
-        public readonly ?string $createDate,
-        public readonly ?string $expirationDate,
+        public readonly ?\DateTimeImmutable $createDate,
+        public readonly ?\DateTimeImmutable $expirationDate,
     ) {
     }
 }

@@ -11,10 +11,8 @@ use RNIDS\Contact\Dto\ContactAddress;
 use RNIDS\Contact\Dto\ContactCheckItem;
 use RNIDS\Contact\Dto\ContactCheckResponse;
 use RNIDS\Contact\Dto\ContactCreateResponse;
-use RNIDS\Contact\Dto\ContactExtension;
 use RNIDS\Contact\Dto\ContactInfoResponse;
 use RNIDS\Contact\Dto\ContactPostalInfo;
-use RNIDS\Contact\Dto\ContactStatus;
 use RNIDS\Xml\Response\ResponseMetadata;
 
 #[Group('unit')]
@@ -48,7 +46,7 @@ final class ContactResponseMapperTest extends TestCase
             $metadata,
             'C-300',
             'C300-RS',
-            [ new ContactStatus('ok', 'Active') ],
+            [ 'ok' ],
             new ContactPostalInfo(
                 ContactPostalInfo::TYPE_LOC,
                 'Person Example',
@@ -61,19 +59,24 @@ final class ContactResponseMapperTest extends TestCase
             'CID',
             'CCID',
             'UCID',
-            '2024-01-01',
-            '2025-01-01',
+            new \DateTimeImmutable('2024-01-01T00:00:00Z'),
+            new \DateTimeImmutable('2025-01-01T00:00:00Z'),
             null,
             1,
-            new ContactExtension('12345', null, null, null, null, null),
+            '12345',
+            null,
+            null,
+            null,
+            false,
+            null,
         );
 
         $mapped = $mapper->mapInfoResponse($response);
 
         self::assertSame('C-300', $mapped['id']);
-        self::assertSame('ok', $mapped['statuses'][0]['value']);
+        self::assertSame('ok', $mapped['statuses'][0]);
         self::assertSame('Belgrade', $mapped['postalInfo']['address']['city']);
-        self::assertSame('12345', $mapped['extension']['ident']);
+        self::assertSame('12345', $mapped['ident']);
     }
 
     public function testMapCreateAndEmptyResponses(): void
@@ -82,10 +85,10 @@ final class ContactResponseMapperTest extends TestCase
         $metadata = new ResponseMetadata(1000, 'OK', 'CL-1', 'SV-1');
 
         $create = $mapper->mapCreateResponse(
-            new ContactCreateResponse($metadata, 'C-200', '2026-03-01T00:00:00.0Z'),
+            new ContactCreateResponse($metadata, 'C-200', new \DateTimeImmutable('2026-03-01T00:00:00.0Z')),
         );
         self::assertSame('C-200', $create['id']);
-        self::assertSame('2026-03-01T00:00:00.0Z', $create['createDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $create['createDate']);
 
         self::assertSame([], $mapper->mapEmptyResponse());
     }

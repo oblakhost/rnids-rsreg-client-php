@@ -66,12 +66,12 @@ final class ContactInfoResponseParserTest extends TestCase
 
         self::assertSame('C-1', $response->id);
         self::assertSame('ROID-1', $response->roid);
-        self::assertSame('ok', $response->statuses[0]->value);
+        self::assertSame('ok', $response->statuses[0]);
         self::assertSame('Person Example', $response->postalInfo?->name);
         self::assertSame('Belgrade', $response->postalInfo?->address->city);
         self::assertSame([ 'Main 1', 'Second 2' ], $response->postalInfo?->address->streets);
         self::assertSame(1, $response->disclose);
-        self::assertSame('123', $response->extension->ident);
-        self::assertSame('RS123', $response->extension->vatNo);
+        self::assertSame('123', $response->ident);
+        self::assertSame('RS123', $response->vatNo);
     }
 }

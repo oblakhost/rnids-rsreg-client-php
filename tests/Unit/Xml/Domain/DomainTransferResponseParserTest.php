@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Domain;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
 use RNIDS\Xml\Domain\DomainTransferResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -40,9 +40,12 @@ final class DomainTransferResponseParserTest extends TestCase
         self::assertSame('example.rs', $response->name);
         self::assertSame('pending', $response->transferStatus);
         self::assertSame('REQ-1', $response->requestClientId);
-        self::assertSame('2026-03-01T10:00:00.0Z', $response->requestDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->requestDate);
+        self::assertSame('2026-03-01T10:00:00+00:00', $response->requestDate?->format('c'));
         self::assertSame('ACT-1', $response->actionClientId);
-        self::assertSame('2026-03-06T10:00:00.0Z', $response->actionDate);
-        self::assertSame('2027-02-01T00:00:00.0Z', $response->expirationDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->actionDate);
+        self::assertSame('2026-03-06T10:00:00+00:00', $response->actionDate?->format('c'));
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->expirationDate);
+        self::assertSame('2027-02-01T00:00:00+00:00', $response->expirationDate?->format('c'));
     }
 }

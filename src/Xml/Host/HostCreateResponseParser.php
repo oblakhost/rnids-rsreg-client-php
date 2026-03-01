@@ -23,7 +23,10 @@ final class HostCreateResponseParser
         return new HostCreateResponse(
             $metadata,
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:creData/host:name'),
-            XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:creData/host:crDate'),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:resData/host:creData/host:crDate',
+            ),
         );
     }
 }

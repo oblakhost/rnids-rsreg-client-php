@@ -126,14 +126,15 @@ final class HostService
      * @return array{
      *   name: string|null,
      *   roid: string|null,
-     *   statuses: list<array{value: string, description: string|null}>,
-     *   addresses: list<array{address: string, ipVersion: string}>,
+     *   statuses: list<string>,
+     *   ipv4: list<string>,
+     *   ipv6: list<string>,
      *   clientId: string|null,
      *   createClientId: string|null,
      *   updateClientId: string|null,
-     *   createDate: string|null,
-     *   updateDate: string|null,
-     *   transferDate: string|null
+     *   createDate: \DateTimeImmutable|null,
+     *   updateDate: \DateTimeImmutable|null,
+     *   transferDate: \DateTimeImmutable|null
      * } Parsed host info response including statuses and host addresses.
      */
     public function info(string $name): array
@@ -159,7 +160,7 @@ final class HostService
      * @param string|null $ipv4 Optional IPv4 address for the simplified API variant.
      * @param string|null $ipv6 Optional IPv6 address for the simplified API variant.
      *
-     * @return array{name: string|null, createDate: string|null} Host creation result metadata.
+     * @return array{name: string|null, createDate: \DateTimeImmutable|null} Host creation result metadata.
      */
     public function create(string|array $request, ?string $ipv4 = null, ?string $ipv6 = null): array
     {

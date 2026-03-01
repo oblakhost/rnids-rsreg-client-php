@@ -208,14 +208,14 @@ final class DomainServiceTest extends TestCase
         );
         self::assertSame('example.rs', $result['name']);
         self::assertSame('D1-RS', $result['roid']);
-        self::assertSame('ok', $result['statuses'][0]['value']);
-        self::assertSame('Active', $result['statuses'][0]['description']);
+        self::assertSame('ok', $result['statuses'][0]);
         self::assertSame('REG-1', $result['registrant']);
-        self::assertSame('admin', $result['contacts'][0]['type']);
-        self::assertSame('ADM-1', $result['contacts'][0]['handle']);
-        self::assertSame('ns1.example.rs', $result['nameservers'][0]['name']);
-        self::assertSame('1', $result['extension']['isWhoisPrivacy']);
-        self::assertSame('normal', $result['extension']['operationMode']);
+        self::assertSame('ADM-1', $result['adminContact']);
+        self::assertNull($result['techContact']);
+        self::assertSame([], $result['nameservers']['ns1.example.rs']['ipv4']);
+        self::assertSame([], $result['nameservers']['ns1.example.rs']['ipv6']);
+        self::assertTrue($result['whoisPrivacy']);
+        self::assertSame('normal', $result['operationMode']);
     }
 
     public function testInfoThrowsForMissingName(): void
@@ -372,8 +372,10 @@ final class DomainServiceTest extends TestCase
             $transport->writtenPayload,
         );
         self::assertSame('example.rs', $result['name']);
-        self::assertSame('2026-02-01T00:00:00.0Z', $result['createDate']);
-        self::assertSame('2027-02-01T00:00:00.0Z', $result['expirationDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['createDate']);
+        self::assertSame('2026-02-01T00:00:00+00:00', $result['createDate']?->format('c'));
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
+        self::assertSame('2027-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
     }
 
     public function testRegisterThrowsWhenContactsAreMissingRequiredTypes(): void
@@ -614,7 +616,8 @@ final class DomainServiceTest extends TestCase
             $transport->writtenPayload,
         );
         self::assertSame('example.rs', $result['name']);
-        self::assertSame('2028-02-01T00:00:00.0Z', $result['expirationDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
+        self::assertSame('2028-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
     }
 
     public function testDeleteSendsDomainDeleteCommandAndMapsParsedResponse(): void
@@ -735,7 +738,8 @@ final class DomainServiceTest extends TestCase
             '<domain:period unit="y">1</domain:period>',
             $transport->writtenPayload,
         );
-        self::assertSame('2028-02-01T00:00:00.0Z', $result['expirationDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
+        self::assertSame('2028-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
     }
 
     public function testTransferSendsDomainTransferCommandAndMapsParsedResponse(): void

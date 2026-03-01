@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Domain;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
 use RNIDS\Xml\Domain\DomainInfoResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -62,21 +62,19 @@ final class DomainInfoResponseParserTest extends TestCase
         self::assertSame('example.rs', $response->name);
         self::assertSame('D0001-RS', $response->roid);
         self::assertCount(1, $response->statuses);
-        self::assertSame('ok', $response->statuses[0]->value);
-        self::assertSame('Active', $response->statuses[0]->description);
+        self::assertSame('ok', $response->statuses[0]);
         self::assertSame('REG-1', $response->registrant);
-        self::assertCount(2, $response->contacts);
-        self::assertSame('admin', $response->contacts[0]->type);
-        self::assertSame('ADM-1', $response->contacts[0]->handle);
+        self::assertSame('ADM-1', $response->adminContact);
+        self::assertSame('TEC-1', $response->techContact);
         self::assertCount(2, $response->nameservers);
         self::assertSame('ns1.example.rs', $response->nameservers[0]->name);
         self::assertSame([], $response->nameservers[0]->addresses);
         self::assertSame('ns2.example.rs', $response->nameservers[1]->name);
         self::assertSame([ '192.0.2.2', '2001:db8::2' ], $response->nameservers[1]->addresses);
-        self::assertSame('1', $response->extension->isWhoisPrivacy);
-        self::assertSame('secure', $response->extension->operationMode);
-        self::assertSame('0', $response->extension->notifyAdmin);
-        self::assertSame('1', $response->extension->dnsSec);
-        self::assertSame('Domain note', $response->extension->remark);
+        self::assertTrue($response->whoisPrivacy);
+        self::assertSame('secure', $response->operationMode);
+        self::assertFalse($response->notifyAdmin);
+        self::assertTrue($response->dnsSec);
+        self::assertSame('Domain note', $response->remark);
     }
 }

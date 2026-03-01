@@ -41,11 +41,10 @@ final class HostInfoResponseParserTest extends TestCase
         self::assertSame('ns1.example.rs', $response->name);
         self::assertSame('H-1', $response->roid);
         self::assertCount(1, $response->statuses);
-        self::assertSame('ok', $response->statuses[0]->value);
-        self::assertCount(2, $response->addresses);
-        self::assertSame('v4', $response->addresses[0]->ipVersion);
-        self::assertSame('2001:db8::1', $response->addresses[1]->address);
+        self::assertSame('ok', $response->statuses[0]);
+        self::assertSame([ '192.0.2.1' ], $response->ipv4);
+        self::assertSame([ '2001:db8::1' ], $response->ipv6);
         self::assertSame('ClientX', $response->clientId);
-        self::assertSame('2026-01-03T00:00:00.0Z', $response->transferDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->transferDate);
     }
 }

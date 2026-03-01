@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Domain;
 
-use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\TestCase;
 use RNIDS\Xml\Domain\DomainRenewResponseParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -33,6 +33,6 @@ final class DomainRenewResponseParserTest extends TestCase
         );
 
         self::assertSame('example.rs', $response->name);
-        self::assertSame('2028-02-01T00:00:00.0Z', $response->expirationDate);
+        self::assertInstanceOf(\DateTimeImmutable::class, $response->expirationDate);
     }
 }

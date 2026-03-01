@@ -34,23 +34,22 @@ Response shape:
 array{
   name: string|null,
   roid: string|null,
-  statuses: list<array{value: string, description: string|null}>,
+  statuses: list<string>,
   registrant: string|null,
-  contacts: list<array{type: string, handle: string}>,
-  nameservers: list<array{name: string, addresses: list<string>}>,
+  adminContact: string|null,
+  techContact: string|null,
+  nameservers: array<string, array{ipv4: list<string>, ipv6: list<string>}>,
   clientId: string|null,
   createClientId: string|null,
   updateClientId: string|null,
-  createDate: string|null,
-  updateDate: string|null,
-  expirationDate: string|null,
-  extension: array{
-    isWhoisPrivacy: string|null,
-    operationMode: string|null,
-    notifyAdmin: string|null,
-    dnsSec: string|null,
-    remark: string|null
-  }
+  createDate: \DateTimeImmutable|null,
+  updateDate: \DateTimeImmutable|null,
+  expirationDate: \DateTimeImmutable|null,
+  whoisPrivacy: bool,
+  operationMode: string|null,
+  notifyAdmin: bool,
+  dnsSec: bool,
+  remark: string|null
 }
 ```
 
@@ -105,7 +104,7 @@ $domain->register(
 Response shape:
 
 ```php
-array{name: string|null, createDate: string|null, expirationDate: string|null}
+array{name: string|null, createDate: \DateTimeImmutable|null, expirationDate: \DateTimeImmutable|null}
 ```
 
 ### `renew(string|array $request, ?int $years = null): array`
@@ -117,7 +116,7 @@ In simplified mode, current expiration date is resolved via `info()`.
 Response shape:
 
 ```php
-array{name: string|null, expirationDate: string|null}
+array{name: string|null, expirationDate: \DateTimeImmutable|null}
 ```
 
 ### `update(array $request): array{}`
@@ -182,9 +181,9 @@ array{
   name: string|null,
   transferStatus: string|null,
   requestClientId: string|null,
-  requestDate: string|null,
+  requestDate: \DateTimeImmutable|null,
   actionClientId: string|null,
-  actionDate: string|null,
-  expirationDate: string|null
+  actionDate: \DateTimeImmutable|null,
+  expirationDate: \DateTimeImmutable|null
 }
 ```

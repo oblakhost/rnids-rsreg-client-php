@@ -24,7 +24,7 @@ final class DomainRenewResponseParser
         return new DomainRenewResponse(
             $metadata,
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/domain:renData/domain:name'),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/domain:renData/domain:exDate',
             ),

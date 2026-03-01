@@ -14,7 +14,7 @@ final class HostCreateResponse
     public function __construct(
         public readonly ResponseMetadata $metadata,
         public readonly ?string $name,
-        public readonly ?string $createDate,
+        public readonly ?\DateTimeImmutable $createDate,
     ) {
     }
 }

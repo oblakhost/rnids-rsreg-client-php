@@ -132,7 +132,7 @@ final class ContactService
      *   extension?: mixed
      * } $request Contact create payload containing required identity/address fields and optional extension data.
      *
-     * @return array{id: string|null, createDate: string|null} Contact creation result metadata.
+     * @return array{id: string|null, createDate: \DateTimeImmutable|null} Contact creation result metadata.
      */
     public function create(array $request): array
     {
@@ -158,7 +158,7 @@ final class ContactService
      * @return array{
      *   id: string|null,
      *   roid: string|null,
-     *   statuses: list<array{value: string, description: string|null}>,
+     *   statuses: list<string>,
      *   postalInfo: array{
      *     type: string,
      *     name: string,
@@ -177,18 +177,16 @@ final class ContactService
      *   clientId: string|null,
      *   createClientId: string|null,
      *   updateClientId: string|null,
-     *   createDate: string|null,
-     *   updateDate: string|null,
-     *   transferDate: string|null,
+     *   createDate: \DateTimeImmutable|null,
+     *   updateDate: \DateTimeImmutable|null,
+     *   transferDate: \DateTimeImmutable|null,
      *   disclose: int|null,
-     *   extension: array{
-     *     ident: string|null,
-     *     identDescription: string|null,
-     *     identExpiry: string|null,
-     *     identKind: string|null,
-     *     isLegalEntity: string|null,
-     *     vatNo: string|null
-     *   }
+     *   ident: string|null,
+     *   identDescription: string|null,
+     *   identExpiry: string|null,
+     *   identKind: string|null,
+     *   legalEntity: bool,
+     *   vatNo: string|null
      * } Parsed contact info response with core and RNIDS-specific values.
      */
     public function info(string $id): array

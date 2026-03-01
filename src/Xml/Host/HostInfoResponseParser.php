@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Host;
 
-use RNIDS\Host\Dto\HostAddress;
 use RNIDS\Host\Dto\HostInfoResponse;
-use RNIDS\Host\Dto\HostStatus;
 use RNIDS\Xml\Parser\XmlParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -27,18 +25,28 @@ final class HostInfoResponseParser
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:name'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:roid'),
             $this->parseStatuses($xpath),
-            $this->parseAddresses($xpath),
+            $this->parseAddressesByVersion($xpath, 'v4'),
+            $this->parseAddressesByVersion($xpath, 'v6'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:clID'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:crID'),
             XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:upID'),
-            XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:crDate'),
-            XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:upDate'),
-            XmlParser::firstNodeValue($xpath, '/epp:epp/epp:response/epp:resData/host:infData/host:trDate'),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:resData/host:infData/host:crDate',
+            ),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:resData/host:infData/host:upDate',
+            ),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:resData/host:infData/host:trDate',
+            ),
         );
     }
 
     /**
-     * @return list<HostStatus>
+     * @return list<string>
      */
     private function parseStatuses(\DOMXPath $xpath): array
     {
@@ -63,7 +71,7 @@ final class HostInfoResponseParser
         return $statuses;
     }
 
-    private function parseStatusNode(\DOMNode $node): ?HostStatus
+    private function parseStatusNode(\DOMNode $node): ?string
     {
         if (!$node instanceof \DOMElement) {
             return null;
@@ -75,15 +83,13 @@ final class HostInfoResponseParser
             return null;
         }
 
-        $description = \trim($node->textContent);
-
-        return new HostStatus($value, '' === $description ? null : $description);
+        return $value;
     }
 
     /**
-     * @return list<HostAddress>
+     * @return list<string>
      */
-    private function parseAddresses(\DOMXPath $xpath): array
+    private function parseAddressesByVersion(\DOMXPath $xpath, string $version): array
     {
         $nodes = $xpath->query('/epp:epp/epp:response/epp:resData/host:infData/host:addr');
 
@@ -94,7 +100,7 @@ final class HostInfoResponseParser
         $addresses = [];
 
         foreach ($nodes as $node) {
-            $address = $this->parseAddressNode($node);
+            $address = $this->parseAddressNode($node, $version);
 
             if (null === $address) {
                 continue;
@@ -106,7 +112,7 @@ final class HostInfoResponseParser
         return $addresses;
     }
 
-    private function parseAddressNode(\DOMNode $node): ?HostAddress
+    private function parseAddressNode(\DOMNode $node, string $version): ?string
     {
         if (!$node instanceof \DOMElement) {
             return null;
@@ -119,7 +125,12 @@ final class HostInfoResponseParser
         }
 
         $ipVersion = \trim($node->getAttribute('ip'));
+        $normalizedVersion = '' === $ipVersion ? 'v4' : $ipVersion;
 
-        return new HostAddress($address, '' === $ipVersion ? 'v4' : $ipVersion);
+        if ($normalizedVersion !== $version) {
+            return null;
+        }
+
+        return $address;
     }
 }

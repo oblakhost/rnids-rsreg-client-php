@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace RNIDS\Xml\Contact;
 
 use RNIDS\Contact\Dto\ContactAddress;
-use RNIDS\Contact\Dto\ContactExtension;
 use RNIDS\Contact\Dto\ContactInfoResponse;
 use RNIDS\Contact\Dto\ContactPostalInfo;
-use RNIDS\Contact\Dto\ContactStatus;
 use RNIDS\Xml\Parser\XmlParser;
 use RNIDS\Xml\Response\ResponseMetadata;
 
@@ -51,15 +49,15 @@ final class ContactInfoResponseParser
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:upID',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:crDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:upDate',
             ),
-            XmlParser::firstNodeValue(
+            XmlParser::firstNodeDateTime(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:trDate',
             ),
@@ -67,12 +65,37 @@ final class ContactInfoResponseParser
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:disclose/@flag',
             ),
-            $this->parseExtension($xpath),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:ident',
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identDescription',
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identExpiry',
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identKind',
+            ),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:isLegalEntity',
+                ),
+            ),
+            XmlParser::firstNodeValue(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:vatNo',
+            ),
         );
     }
 
     /**
-     * @return list<ContactStatus>
+     * @return list<string>
      */
     private function parseStatuses(\DOMXPath $xpath): array
     {
@@ -97,7 +120,7 @@ final class ContactInfoResponseParser
         return $items;
     }
 
-    private function parseStatusNode(\DOMNode $node): ?ContactStatus
+    private function parseStatusNode(\DOMNode $node): ?string
     {
         if (!$node instanceof \DOMElement) {
             return null;
@@ -109,9 +132,7 @@ final class ContactInfoResponseParser
             return null;
         }
 
-        $description = \trim($node->textContent);
-
-        return new ContactStatus($value, '' === $description ? null : $description);
+        return $value;
     }
 
     private function parsePostalInfo(\DOMXPath $xpath): ?ContactPostalInfo
@@ -206,33 +227,12 @@ final class ContactInfoResponseParser
         return $values;
     }
 
-    private function parseExtension(\DOMXPath $xpath): ContactExtension
+    private function parseBooleanNode(?string $value): bool
     {
-        return new ContactExtension(
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:ident',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identDescription',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identExpiry',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:identKind',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:isLegalEntity',
-            ),
-            XmlParser::firstNodeValue(
-                $xpath,
-                '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:vatNo',
-            ),
-        );
+        if (null === $value) {
+            return false;
+        }
+
+        return \in_array(\strtolower(\trim($value)), [ '1', 'true', 'yes' ], true);
     }
 }

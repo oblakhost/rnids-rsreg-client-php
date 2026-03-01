@@ -38,7 +38,7 @@ Policy behavior:
 Response shape:
 
 ```php
-array{id: string|null, createDate: string|null}
+array{id: string|null, createDate: \DateTimeImmutable|null}
 ```
 
 ### `info(string $id): array`
@@ -51,7 +51,7 @@ Response shape:
 array{
   id: string|null,
   roid: string|null,
-  statuses: list<array{value: string, description: string|null}>,
+  statuses: list<string>,
   postalInfo: array{
     type: string,
     name: string,
@@ -70,18 +70,16 @@ array{
   clientId: string|null,
   createClientId: string|null,
   updateClientId: string|null,
-  createDate: string|null,
-  updateDate: string|null,
-  transferDate: string|null,
+  createDate: \DateTimeImmutable|null,
+  updateDate: \DateTimeImmutable|null,
+  transferDate: \DateTimeImmutable|null,
   disclose: int|null,
-  extension: array{
-    ident: string|null,
-    identDescription: string|null,
-    identExpiry: string|null,
-    identKind: string|null,
-    isLegalEntity: string|null,
-    vatNo: string|null
-  }
+  ident: string|null,
+  identDescription: string|null,
+  identExpiry: string|null,
+  identKind: string|null,
+  legalEntity: bool,
+  vatNo: string|null
 }
 ```
 

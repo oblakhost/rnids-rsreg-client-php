@@ -144,23 +144,22 @@ final class DomainService
      * @return array{
      *   name: string|null,
      *   roid: string|null,
-     *   statuses: list<array{value: string, description: string|null}>,
+     *   statuses: list<string>,
      *   registrant: string|null,
-     *   contacts: list<array{type: string, handle: string}>,
-     *   nameservers: list<array{name: string, addresses: list<string>}>,
+     *   adminContact: string|null,
+     *   techContact: string|null,
+     *   nameservers: array<string, array{ipv4: list<string>, ipv6: list<string>}>,
      *   clientId: string|null,
      *   createClientId: string|null,
      *   updateClientId: string|null,
-     *   createDate: string|null,
-     *   updateDate: string|null,
-     *   expirationDate: string|null,
-     *   extension: array{
-     *     isWhoisPrivacy: string|null,
-     *     operationMode: string|null,
-     *     notifyAdmin: string|null,
-     *     dnsSec: string|null,
-     *     remark: string|null
-     *   }
+     *   createDate: \DateTimeImmutable|null,
+     *   updateDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null,
+     *   whoisPrivacy: bool,
+     *   operationMode: string|null,
+     *   notifyAdmin: bool,
+     *   dnsSec: bool,
+     *   remark: string|null
      * }
      */
     public function info(string $name, ?string $hosts = null): array
@@ -206,7 +205,7 @@ final class DomainService
      *   remark?: mixed
      * }|null $extension
      *
-     * @return array{name: string|null, createDate: string|null, expirationDate: string|null}
+     * @return array{name: string|null, createDate: \DateTimeImmutable|null, expirationDate: \DateTimeImmutable|null}
      */
     public function register(
         string|array $request,
@@ -252,7 +251,7 @@ final class DomainService
      * }|non-empty-string $request
      * @param int|null $years Renewal period used by the simplified API variant.
      *
-     * @return array{name: string|null, expirationDate: string|null}
+     * @return array{name: string|null, expirationDate: \DateTimeImmutable|null}
      */
     public function renew(string|array $request, ?int $years = null): array
     {
@@ -341,10 +340,10 @@ final class DomainService
      *   name: string|null,
      *   transferStatus: string|null,
      *   requestClientId: string|null,
-     *   requestDate: string|null,
+     *   requestDate: \DateTimeImmutable|null,
      *   actionClientId: string|null,
-     *   actionDate: string|null,
-     *   expirationDate: string|null
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
      * }
      */
     public function transfer(array $request): array
@@ -374,13 +373,13 @@ final class DomainService
         $info = $this->info($name);
         $expirationDate = $info['expirationDate'] ?? null;
 
-        if (!\is_string($expirationDate) || '' === \trim($expirationDate)) {
+        if (!$expirationDate instanceof \DateTimeImmutable) {
             throw new \InvalidArgumentException(
                 'Unable to resolve current expiration date for simplified domain renew API.',
             );
         }
 
-        return $expirationDate;
+        return $expirationDate->format('Y-m-d');
     }
 
     /**

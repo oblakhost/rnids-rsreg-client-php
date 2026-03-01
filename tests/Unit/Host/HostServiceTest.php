@@ -155,8 +155,9 @@ final class HostServiceTest extends TestCase
 
         self::assertStringContainsString('<host:info', $transport->writtenPayload);
         self::assertSame('ns1.example.rs', $result['name']);
-        self::assertSame('ok', $result['statuses'][0]['value']);
-        self::assertSame('192.0.2.1', $result['addresses'][0]['address']);
+        self::assertSame('ok', $result['statuses'][0]);
+        self::assertSame('192.0.2.1', $result['ipv4'][0]);
+        self::assertSame([], $result['ipv6']);
     }
 
     public function testCreateSendsHostCreateCommandAndMapsResponse(): void
@@ -210,7 +211,8 @@ final class HostServiceTest extends TestCase
 
         self::assertStringContainsString('<host:create', $transport->writtenPayload);
         self::assertSame('ns1.example.rs', $result['name']);
-        self::assertSame('2026-02-01T00:00:00.0Z', $result['createDate']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['createDate']);
+        self::assertSame('2026-02-01T00:00:00+00:00', $result['createDate']?->format('c'));
     }
 
     public function testCreateAcceptsHostnameAndIpArguments(): void

@@ -8,7 +8,6 @@ use RNIDS\Contact\Dto\ContactCheckItem;
 use RNIDS\Contact\Dto\ContactCheckResponse;
 use RNIDS\Contact\Dto\ContactCreateResponse;
 use RNIDS\Contact\Dto\ContactInfoResponse;
-use RNIDS\Contact\Dto\ContactStatus;
 
 final class ContactResponseMapper
 {
@@ -28,7 +27,7 @@ final class ContactResponseMapper
     }
 
     /**
-     * @return array{id: string|null, createDate: string|null}
+     * @return array{id: string|null, createDate: \DateTimeImmutable|null}
      */
     public function mapCreateResponse(ContactCreateResponse $response): array
     {
@@ -42,7 +41,7 @@ final class ContactResponseMapper
      * @return array{
      *   id: string|null,
      *   roid: string|null,
-     *   statuses: list<array{value: string, description: string|null}>,
+     *   statuses: list<string>,
      *   postalInfo: array{
      *     type: string,
      *     name: string,
@@ -61,18 +60,16 @@ final class ContactResponseMapper
      *   clientId: string|null,
      *   createClientId: string|null,
      *   updateClientId: string|null,
-     *   createDate: string|null,
-     *   updateDate: string|null,
-     *   transferDate: string|null,
+     *   createDate: \DateTimeImmutable|null,
+     *   updateDate: \DateTimeImmutable|null,
+     *   transferDate: \DateTimeImmutable|null,
      *   disclose: int|null,
-     *   extension: array{
-     *     ident: string|null,
-     *     identDescription: string|null,
-     *     identExpiry: string|null,
-     *     identKind: string|null,
-     *     isLegalEntity: string|null,
-     *     vatNo: string|null
-     *   }
+     *   ident: string|null,
+     *   identDescription: string|null,
+     *   identExpiry: string|null,
+     *   identKind: string|null,
+     *   legalEntity: bool,
+     *   vatNo: string|null
      * }
      */
     public function mapInfoResponse(ContactInfoResponse $response): array
@@ -100,28 +97,20 @@ final class ContactResponseMapper
             'createDate' => $response->createDate,
             'disclose' => $response->disclose,
             'email' => $response->email,
-            'extension' => [
-                'ident' => $response->extension->ident,
-                'identDescription' => $response->extension->identDescription,
-                'identExpiry' => $response->extension->identExpiry,
-                'identKind' => $response->extension->identKind,
-                'isLegalEntity' => $response->extension->isLegalEntity,
-                'vatNo' => $response->extension->vatNo,
-            ],
             'fax' => $response->fax,
             'id' => $response->id,
+            'ident' => $response->ident,
+            'identDescription' => $response->identDescription,
+            'identExpiry' => $response->identExpiry,
+            'identKind' => $response->identKind,
+            'legalEntity' => $response->legalEntity,
             'postalInfo' => $postalInfo,
             'roid' => $response->roid,
-            'statuses' => \array_map(
-                static fn(ContactStatus $status): array => [
-                    'description' => $status->description,
-                    'value' => $status->value,
-                ],
-                $response->statuses,
-            ),
+            'statuses' => $response->statuses,
             'transferDate' => $response->transferDate,
             'updateClientId' => $response->updateClientId,
             'updateDate' => $response->updateDate,
+            'vatNo' => $response->vatNo,
             'voice' => $response->voice,
         ];
     }
