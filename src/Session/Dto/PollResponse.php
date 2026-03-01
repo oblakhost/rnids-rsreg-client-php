@@ -25,7 +25,7 @@ final class PollResponse
         public readonly ?string $messageId,
         public readonly ?string $queueDate,
         public readonly ?string $message,
-        public readonly ?PollDomainTransferData $domainTransferData,
+        public readonly ?PollDomainTransferData $domainTransferData = null,
     ) {
     }
 }

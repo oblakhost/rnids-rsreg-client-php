@@ -75,4 +75,25 @@ final class SessionResponseMapperTest extends TestCase
 
         self::assertSame([], $mapper->mapEmptyResponse());
     }
+
+    public function testMapPollResponseIncludesNullDomainTransferDataWhenAbsent(): void
+    {
+        $mapper = new SessionResponseMapper();
+        $metadata = new ResponseMetadata(1300, 'No messages', 'CL-1', 'SV-1');
+        $poll = new PollResponse(
+            $metadata,
+            0,
+            null,
+            null,
+            null,
+        );
+
+        self::assertSame([
+            'count' => 0,
+            'domainTransferData' => null,
+            'message' => null,
+            'messageId' => null,
+            'queueDate' => null,
+        ], $mapper->mapPollResponse($poll));
+    }
 }

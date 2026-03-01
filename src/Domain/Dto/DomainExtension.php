@@ -7,7 +7,7 @@ namespace RNIDS\Domain\Dto;
 /**
  * Represents RNIDS domain extension fields shared by register/update commands.
  */
-final class DomainExtension
+class DomainExtension
 {
     /**
      * @param ?non-empty-string $remark
