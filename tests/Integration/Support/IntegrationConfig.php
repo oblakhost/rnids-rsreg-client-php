@@ -52,7 +52,9 @@ final class IntegrationConfig
      *     clientCertificatePath: string,
      *     clientCertificatePassword: string,
      *     caFilePath: string,
-     *     allowSelfSigned: bool
+     *     allowSelfSigned: bool,
+     *     verifyPeer: bool,
+     *     verifyPeerName: bool
      *   }
      * }
      */
@@ -67,6 +69,8 @@ final class IntegrationConfig
                 'caFilePath' => self::caCertificatePath(),
                 'clientCertificatePassword' => self::clientCertificatePassword(),
                 'clientCertificatePath' => self::clientCertificatePath(),
+                'verifyPeer' => false,
+                'verifyPeerName' => false,
             ],
             'username' => self::requiredEnv('RNIDS_EPP_USERNAME'),
         ];
@@ -93,9 +97,7 @@ final class IntegrationConfig
 
     public static function ensureRegisterReadyOrSkip(): void
     {
-        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_REGISTRANT');
-        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_ADMIN_CONTACT');
-        self::ensureEnvOrSkip('RNIDS_EPP_REGISTER_TECH_CONTACT');
+        // Register contact handles now fall back to test contact defaults.
     }
 
     /**
@@ -130,11 +132,11 @@ final class IntegrationConfig
             'authInfo' => self::registerAuthInfo(),
             'contacts' => [
                 [
-                    'handle' => self::requiredEnv('RNIDS_EPP_REGISTER_ADMIN_CONTACT'),
+                    'handle' => self::registerAdminContactHandle(),
                     'type' => 'admin',
                 ],
                 [
-                    'handle' => self::requiredEnv('RNIDS_EPP_REGISTER_TECH_CONTACT'),
+                    'handle' => self::registerTechContactHandle(),
                     'type' => 'tech',
                 ],
             ],
@@ -142,13 +144,41 @@ final class IntegrationConfig
             'nameservers' => self::registerNameservers(),
             'period' => 1,
             'periodUnit' => 'y',
-            'registrant' => self::requiredEnv('RNIDS_EPP_REGISTER_REGISTRANT'),
+            'registrant' => self::registerRegistrantHandle(),
         ];
     }
 
     public static function registerRegistrantHandle(): string
     {
-        return self::requiredEnv('RNIDS_EPP_REGISTER_REGISTRANT');
+        $registrant = self::nonEmptyEnvOrNull('RNIDS_EPP_REGISTER_REGISTRANT');
+
+        if (null !== $registrant) {
+            return $registrant;
+        }
+
+        return self::testContactHandle();
+    }
+
+    public static function registerAdminContactHandle(): string
+    {
+        $admin = self::nonEmptyEnvOrNull('RNIDS_EPP_REGISTER_ADMIN_CONTACT');
+
+        if (null !== $admin) {
+            return $admin;
+        }
+
+        return self::testContactHandle();
+    }
+
+    public static function registerTechContactHandle(): string
+    {
+        $tech = self::nonEmptyEnvOrNull('RNIDS_EPP_REGISTER_TECH_CONTACT');
+
+        if (null !== $tech) {
+            return $tech;
+        }
+
+        return self::testContactHandle();
     }
 
     public static function contactFixtures(): ContactFixtureFactory

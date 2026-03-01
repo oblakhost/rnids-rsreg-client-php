@@ -12,16 +12,9 @@ use Tests\Integration\Support\IntegrationConfig;
 final class IntegrationConfigTest extends TestCase
 {
     /**
-     * @var list<string>
+     * @var array<string, string|null>
      */
-    private array $registerEnvKeys = [
-        'RNIDS_EPP_REGISTER_REGISTRANT',
-        'RNIDS_EPP_REGISTER_ADMIN_CONTACT',
-        'RNIDS_EPP_REGISTER_TECH_CONTACT',
-        'RNIDS_EPP_REGISTER_AUTH_INFO',
-        'RNIDS_EPP_REGISTER_NAMESERVERS',
-        'RNIDS_EPP_TEST_CONTACT_ID',
-    ];
+    private array $originalEnvValues = [];
 
     public function testUniqueRegisterDomainNameReturnsExpectedFormat(): void
     {
@@ -70,6 +63,49 @@ final class IntegrationConfigTest extends TestCase
         IntegrationConfig::domainRegisterRequest('');
     }
 
+    public function testDomainRegisterRequestFallsBackToTestContactEnvWhenRegistrantIsMissing(): void
+    {
+        $this->setEnv('RNIDS_EPP_REGISTER_ADMIN_CONTACT', 'ADM-555');
+        $this->setEnv('RNIDS_EPP_REGISTER_TECH_CONTACT', 'TEC-555');
+        $this->setEnv('RNIDS_EPP_TEST_CONTACT_ID', 'OBL-ENV-001');
+
+        $request = IntegrationConfig::domainRegisterRequest('example.rs');
+
+        self::assertSame('OBL-ENV-001', $request['registrant']);
+    }
+
+    public function testDomainRegisterRequestFallsBackToDefaultContactWhenRegistrantAndTestContactEnvMissing(): void
+    {
+        $this->setEnv('RNIDS_EPP_REGISTER_ADMIN_CONTACT', 'ADM-555');
+        $this->setEnv('RNIDS_EPP_REGISTER_TECH_CONTACT', 'TEC-555');
+
+        $request = IntegrationConfig::domainRegisterRequest('example.rs');
+
+        self::assertSame('OBL-test-kontakt', $request['registrant']);
+    }
+
+    public function testDomainRegisterRequestFallsBackToTestContactForAdminAndTechWhenMissing(): void
+    {
+        $this->setEnv('RNIDS_EPP_TEST_CONTACT_ID', 'OBL-ENV-001');
+
+        $request = IntegrationConfig::domainRegisterRequest('example.rs');
+
+        self::assertSame('OBL-ENV-001', $request['contacts'][0]['handle']);
+        self::assertSame('admin', $request['contacts'][0]['type']);
+        self::assertSame('OBL-ENV-001', $request['contacts'][1]['handle']);
+        self::assertSame('tech', $request['contacts'][1]['type']);
+    }
+
+    public function testDomainRegisterRequestFallsBackToDefaultContactForAdminAndTechWhenAllEnvMissing(): void
+    {
+        $request = IntegrationConfig::domainRegisterRequest('example.rs');
+
+        self::assertSame('OBL-test-kontakt', $request['contacts'][0]['handle']);
+        self::assertSame('admin', $request['contacts'][0]['type']);
+        self::assertSame('OBL-test-kontakt', $request['contacts'][1]['handle']);
+        self::assertSame('tech', $request['contacts'][1]['type']);
+    }
+
     public function testTestContactHandleUsesEnvironmentValueWhenPresent(): void
     {
         $this->setEnv('RNIDS_EPP_TEST_CONTACT_ID', 'OBL-ENV-001');
@@ -82,18 +118,45 @@ final class IntegrationConfigTest extends TestCase
         self::assertSame('OBL-test-kontakt', IntegrationConfig::testContactHandle());
     }
 
+    public function testClientConfigUsesRelaxedTlsVerificationForRnidsTestEndpoint(): void
+    {
+        $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
+        $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
+
+        $config = IntegrationConfig::clientConfig();
+
+        self::assertArrayHasKey('tls', $config);
+        self::assertFalse($config['tls']['verifyPeer']);
+        self::assertFalse($config['tls']['verifyPeerName']);
+    }
+
     protected function tearDown(): void
     {
-        foreach ($this->registerEnvKeys as $key) {
-            \putenv($key);
-            unset($_ENV[$key], $_SERVER[$key]);
+        foreach ($this->originalEnvValues as $key => $value) {
+            if (null === $value) {
+                \putenv($key);
+                unset($_ENV[$key], $_SERVER[$key]);
+
+                continue;
+            }
+
+            \putenv($key . '=' . $value);
+            $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
         }
+
+        $this->originalEnvValues = [];
 
         parent::tearDown();
     }
 
     private function setEnv(string $name, string $value): void
     {
+        if (!\array_key_exists($name, $this->originalEnvValues)) {
+            $current = \getenv($name);
+            $this->originalEnvValues[$name] = \is_string($current) ? $current : null;
+        }
+
         \putenv($name . '=' . $value);
         $_ENV[$name] = $value;
         $_SERVER[$name] = $value;
