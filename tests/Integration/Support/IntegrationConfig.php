@@ -28,6 +28,7 @@ final class IntegrationConfig
     ];
 
     private const DEFAULT_CLIENT_CERT_CANDIDATES = [
+        'tests/fixtures/dummy-client-cert.pem',
         'tests/fixtures/oblak.pem',
         'tests/fixtures/client.pem',
         'tests/Fixtures/client.pem',
@@ -92,9 +93,9 @@ final class IntegrationConfig
     {
         self::ensureEnvOrFail('RNIDS_EPP_USERNAME');
         self::ensureEnvOrFail('RNIDS_EPP_PASSWORD');
+        self::port();
         self::ensureFileOrFail(self::clientCertificatePath(), 'RNIDS client certificate');
         self::ensureFileOrFail(self::caCertificatePath(), 'RNIDS CA certificate');
-        self::port();
     }
 
     public static function liveReadinessFailureReason(): ?string
@@ -104,9 +105,11 @@ final class IntegrationConfig
         $port = self::DEFAULT_PORT;
 
         foreach ([ 'RNIDS_EPP_USERNAME', 'RNIDS_EPP_PASSWORD' ] as $requiredEnv) {
-            if (null === self::nonEmptyEnvOrNull($requiredEnv)) {
-                $issues[] = \sprintf('missing %s', $requiredEnv);
+            if (null !== self::nonEmptyEnvOrNull($requiredEnv)) {
+                continue;
             }
+
+            $issues[] = \sprintf('missing %s', $requiredEnv);
         }
 
         try {
@@ -370,7 +373,10 @@ final class IntegrationConfig
 
         if (!\is_string($value) || '' === \trim($value)) {
             throw new \RuntimeException(
-                \sprintf('Missing required environment variable "%s" for RNIDS live integration tests.', $name),
+                \sprintf(
+                    'Missing required environment variable "%s" for RNIDS live integration tests.',
+                    $name,
+                ),
             );
         }
     }
@@ -413,13 +419,17 @@ final class IntegrationConfig
         }
 
         if (!\preg_match('/^\d+$/', $port)) {
-            throw new \RuntimeException('Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.');
+            throw new \RuntimeException(
+                'Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.',
+            );
         }
 
         $parsedPort = (int) $port;
 
         if ($parsedPort < 1 || $parsedPort > 65535) {
-            throw new \RuntimeException('Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.');
+            throw new \RuntimeException(
+                'Environment variable "RNIDS_EPP_PORT" must be an integer between 1 and 65535.',
+            );
         }
 
         return $parsedPort;
@@ -436,7 +446,7 @@ final class IntegrationConfig
             return false;
         }
 
-        if (\filter_var($host, \FILTER_VALIDATE_IP) !== false) {
+        if (false !== \filter_var($host, \FILTER_VALIDATE_IP)) {
             return true;
         }
 
@@ -446,7 +456,9 @@ final class IntegrationConfig
     private static function isTcpEndpointReachable(string $host, int $port, float $timeoutSeconds): bool
     {
         $flags = \STREAM_CLIENT_CONNECT;
-        $context = \stream_context_create([ 'ssl' => [ 'verify_peer' => false, 'verify_peer_name' => false ] ]);
+        $context = \stream_context_create(
+            [ 'ssl' => [ 'verify_peer' => false, 'verify_peer_name' => false ] ],
+        );
         $socket = @\stream_socket_client(
             \sprintf('tcp://%s:%d', $host, $port),
             $errorCode,

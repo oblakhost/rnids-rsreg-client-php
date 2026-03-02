@@ -77,7 +77,7 @@ final class DomainResponseMapperTest extends TestCase
         $mapper = new DomainResponseMapper();
         $metadata = new ResponseMetadata(1000, 'ok', 'CL-1', 'SV-1');
 
-        self::assertSame([
+        self::assertEquals([
             'createDate' => new \DateTimeImmutable('2024-01-01T00:00:00Z'),
             'expirationDate' => new \DateTimeImmutable('2025-01-01T00:00:00Z'),
             'name' => 'example.rs',
@@ -90,14 +90,14 @@ final class DomainResponseMapperTest extends TestCase
             ),
         ));
 
-        self::assertSame([
+        self::assertEquals([
             'expirationDate' => new \DateTimeImmutable('2026-01-01T00:00:00Z'),
             'name' => 'example.rs',
         ], $mapper->mapRenewResponse(
             new DomainRenewResponse($metadata, 'example.rs', new \DateTimeImmutable('2026-01-01T00:00:00Z')),
         ));
 
-        self::assertSame([
+        self::assertEquals([
             'actionClientId' => 'ACT',
             'actionDate' => new \DateTimeImmutable('2025-01-01T00:00:00Z'),
             'expirationDate' => new \DateTimeImmutable('2026-01-01T00:00:00Z'),

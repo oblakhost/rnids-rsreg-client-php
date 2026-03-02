@@ -58,7 +58,7 @@ final class HostResponseMapperTest extends TestCase
         self::assertSame('ok', $mappedInfo['statuses'][0]);
         self::assertSame('192.0.2.1', $mappedInfo['ipv4'][0]);
 
-        self::assertSame([
+        self::assertEquals([
             'createDate' => new \DateTimeImmutable('2026-02-01T00:00:00.0Z'),
             'name' => 'ns1.example.rs',
         ], $mapper->mapCreateResponse(
