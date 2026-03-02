@@ -60,8 +60,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: build/coverage.xml
-          disable_search: true
-          fail_ci_if_error: true
+          slug: oblakhost/rnids-rsreg-client-php
           token: ${{ env.CODECOV_TOKEN }}
 
       - name: Skip Codecov upload (missing CODECOV_TOKEN)
