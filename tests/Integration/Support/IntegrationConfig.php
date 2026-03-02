@@ -94,8 +94,6 @@ final class IntegrationConfig
         self::ensureEnvOrFail('RNIDS_EPP_USERNAME');
         self::ensureEnvOrFail('RNIDS_EPP_PASSWORD');
         self::port();
-        self::ensureFileOrFail(self::clientCertificatePath(), 'RNIDS client certificate');
-        self::ensureFileOrFail(self::caCertificatePath(), 'RNIDS CA certificate');
     }
 
     public static function liveReadinessFailureReason(): ?string
