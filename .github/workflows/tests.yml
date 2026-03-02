@@ -61,7 +61,7 @@ jobs:
         with:
           files: build/coverage.xml
           slug: oblakhost/rnids-rsreg-client-php
-          token: ${{ env.CODECOV_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Skip Codecov upload (missing CODECOV_TOKEN)
         if: ${{ matrix.php == '8.1' && env.CODECOV_TOKEN == '' }}
