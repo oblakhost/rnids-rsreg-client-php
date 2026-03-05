@@ -32,6 +32,9 @@ Policy behavior:
 
 - `id` is optional. If omitted/empty, library auto-generates a contact ID.
 - Contact IDs are normalized to the `OBL-` prefix before sending create commands.
+- `postalInfo.name` is required by default.
+  - Exception: it may be empty when `extension.isLegalEntity = '1'`
+    and `postalInfo.organization` is provided.
 - `extension.identDescription` is enforced to:
   `Object Creation provided by Oblak Solutions.`
 

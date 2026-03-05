@@ -6,6 +6,7 @@
 [![Packagist Version](https://img.shields.io/packagist/v/rnids/rsreg-epp-client?label=Release&style=flat-square)](https://packagist.org/packages/rnids/rsreg-epp-client)
 ![Packagist PHP Version](https://img.shields.io/packagist/dependency-v/rnids/rsreg-epp-client/php?label=PHP&logo=php&logoColor=white&logoSize=auto&style=flat-square)
 ![Static Badge](https://img.shields.io/badge/RNIDS-RSreg-3858e9?style=flat-square)
+[![codecov](https://codecov.io/github/oblakhost/rnids-rsreg-client-php/graph/badge.svg?token=0UMFP9CL35)](https://codecov.io/github/oblakhost/rnids-rsreg-client-php)
 [![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/oblakhost/rnids-rsreg-client-php/release.yml?label=Build&event=push&style=flat-square&logo=githubactions&logoColor=white&logoSize=auto)](https://github.com/oblakhost/rnids-rsreg-client-php/actions/workflows/release.yml)
 
 </div>
@@ -56,7 +57,7 @@ $client->close();
 Common fluent entry points:
 
 - Session: `$client->session()->hello()`, `login()`, `logout()`, `poll()`
-- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, `transfer()`
+- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, `transfer()`, `getCode()`, `getState()`
 - Contact: `$client->contact()->check()`, `create()`, `info()`, `update()`, `delete()`
 - Host: `$client->host()->check()`, `info()`, `create()`, `update()`, `delete()`
 

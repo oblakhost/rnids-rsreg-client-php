@@ -56,6 +56,10 @@ final class DomainResponseMapperTest extends TestCase
             new \DateTimeImmutable('2025-01-01T00:00:00Z'),
             new \DateTimeImmutable('2026-01-01T00:00:00Z'),
             true,
+            false,
+            new \DateTimeImmutable('2024-06-01T00:00:00Z'),
+            new \DateTimeImmutable('2024-07-01T00:00:00Z'),
+            true,
             'normal',
             false,
             true,
@@ -70,6 +74,14 @@ final class DomainResponseMapperTest extends TestCase
         self::assertSame('ADM-1', $mapped['adminContact']);
         self::assertSame('ns1.example.rs', \array_key_first($mapped['nameservers']));
         self::assertTrue($mapped['whoisPrivacy']);
+        self::assertFalse($mapped['isDomainVerified']);
+        self::assertSame('2024-06-01T00:00:00+00:00', $mapped['domainVerifiedOn']?->format('c'));
+        self::assertSame(
+            '2024-07-01T00:00:00+00:00',
+            $mapped['domainVerificationRequestExpiresOn']?->format('c'),
+        );
+        self::assertTrue($mapped['isWhoisPrivacyPaid']);
+        self::assertSame('2025-01-01T00:00:00+00:00', $mapped['updateDate']?->format('c'));
     }
 
     public function testMapMutationResponses(): void

@@ -56,6 +56,26 @@ final class DomainInfoResponseParser
                     '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:isWhoisPrivacy',
                 ),
             ),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:isDomainVerified',
+                ),
+            ),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:domainVerifiedOn',
+            ),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:domainVerificationRequestExpiresOn',
+            ),
+            $this->parseBooleanNode(
+                XmlParser::firstNodeValue(
+                    $xpath,
+                    '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:isWhoisPrivacyPaid',
+                ),
+            ),
             XmlParser::firstNodeValue(
                 $xpath,
                 '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:operationMode',

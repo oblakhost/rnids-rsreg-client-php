@@ -178,11 +178,16 @@ final class DomainServiceTest extends TestCase
                     . '<domain:registrant>REG-1</domain:registrant>'
                     . '<domain:contact type="admin">ADM-1</domain:contact>'
                     . '<domain:ns><domain:hostObj>ns1.example.rs</domain:hostObj></domain:ns>'
+                    . '<domain:upDate>2026-01-02T00:00:00.0Z</domain:upDate>'
                     . '</domain:infData>'
                     . '</resData>'
                     . '<extension>'
                     . '<domainExt:domain-ext xmlns:domainExt="http://www.rnids.rs/epp/xml/domain-rnids-ext-1.0">'
                     . '<domainExt:isWhoisPrivacy>1</domainExt:isWhoisPrivacy>'
+                    . '<domainExt:isDomainVerified>false</domainExt:isDomainVerified>'
+                    . '<domainExt:domainVerifiedOn>2026-01-03T00:00:00.0Z</domainExt:domainVerifiedOn>'
+                    . '<domainExt:domainVerificationRequestExpiresOn>2026-02-03T00:00:00.0Z</domainExt:domainVerificationRequestExpiresOn>'
+                    . '<domainExt:isWhoisPrivacyPaid>0</domainExt:isWhoisPrivacyPaid>'
                     . '<domainExt:operationMode>normal</domainExt:operationMode>'
                     . '</domainExt:domain-ext>'
                     . '</extension>'
@@ -215,6 +220,14 @@ final class DomainServiceTest extends TestCase
         self::assertSame([], $result['nameservers']['ns1.example.rs']['ipv4']);
         self::assertSame([], $result['nameservers']['ns1.example.rs']['ipv6']);
         self::assertTrue($result['whoisPrivacy']);
+        self::assertFalse($result['isDomainVerified']);
+        self::assertSame('2026-01-03T00:00:00+00:00', $result['domainVerifiedOn']?->format('c'));
+        self::assertSame(
+            '2026-02-03T00:00:00+00:00',
+            $result['domainVerificationRequestExpiresOn']?->format('c'),
+        );
+        self::assertFalse($result['isWhoisPrivacyPaid']);
+        self::assertSame('2026-01-02T00:00:00+00:00', $result['updateDate']?->format('c'));
         self::assertSame('normal', $result['operationMode']);
     }
 
@@ -742,7 +755,7 @@ final class DomainServiceTest extends TestCase
         self::assertSame('2028-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
     }
 
-    public function testTransferSendsDomainTransferCommandAndMapsParsedResponse(): void
+    public function testTransferApprovesDomainTransferAndMapsParsedResponse(): void
     {
         $transport = new class () implements Transport {
             public string $writtenPayload = '';
@@ -793,20 +806,15 @@ final class DomainServiceTest extends TestCase
         };
 
         $service = new DomainService($transport, null, $generator);
-        $result = $service->transfer([
-            'authInfo' => 'secret',
-            'name' => 'example.rs',
-            'operation' => 'request',
-            'period' => 1,
-            'periodUnit' => 'y',
-        ]);
+        $result = $service->transfer('example.rs', 'secret');
 
-        self::assertStringContainsString('<transfer op="request">', $transport->writtenPayload);
+        self::assertStringContainsString('<transfer op="approve">', $transport->writtenPayload);
+        self::assertStringContainsString('<domain:pw>secret</domain:pw>', $transport->writtenPayload);
         self::assertSame('example.rs', $result['name']);
         self::assertSame('pending', $result['transferStatus']);
     }
 
-    public function testTransferThrowsForInvalidOperation(): void
+    public function testTransferThrowsForEmptyTransferCode(): void
     {
         $transport = new class () implements Transport {
             public function connect(): void
@@ -831,15 +839,98 @@ final class DomainServiceTest extends TestCase
         };
 
         $service = new DomainService($transport);
-        $expectedMessage = 'Domain transfer request key "operation" must be one of '
-            . '"request", "query", "cancel", "approve", or "reject".';
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage($expectedMessage);
+        $this->expectExceptionMessage('Domain transfer code must be a non-empty string.');
 
-        $service->transfer([
-            'name' => 'example.rs',
-            'operation' => 'invalid',
-        ]);
+        $service->transfer('example.rs', '');
+    }
+
+    public function testGetCodeSendsDomainTransferRequestOperation(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1001"><msg>Command completed successfully; action pending</msg></result>'
+                    . '<resData>'
+                    . '<domain:trnData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:trStatus>pending</domain:trStatus>'
+                    . '</domain:trnData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000007</clTRID><svTRID>SV-7</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $service->getCode('example.rs');
+
+        self::assertStringContainsString('<transfer op="request">', $transport->writtenPayload);
+    }
+
+    public function testGetStateSendsDomainTransferQueryOperation(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:trnData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:trStatus>clientApproved</domain:trStatus>'
+                    . '</domain:trnData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000008</clTRID><svTRID>SV-8</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $service->getState('example.rs');
+
+        self::assertStringContainsString('<transfer op="query">', $transport->writtenPayload);
     }
 }

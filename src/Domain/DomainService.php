@@ -156,6 +156,10 @@ final class DomainService
      *   updateDate: \DateTimeImmutable|null,
      *   expirationDate: \DateTimeImmutable|null,
      *   whoisPrivacy: bool,
+     *   isDomainVerified: bool,
+     *   domainVerifiedOn: \DateTimeImmutable|null,
+     *   domainVerificationRequestExpiresOn: \DateTimeImmutable|null,
+     *   isWhoisPrivacyPaid: bool,
      *   operationMode: string|null,
      *   notifyAdmin: bool,
      *   dnsSec: bool,
@@ -328,13 +332,7 @@ final class DomainService
     }
 
     /**
-     * @param array{
-     *   operation?: mixed,
-     *   name?: mixed,
-     *   period?: mixed,
-     *   periodUnit?: mixed,
-     *   authInfo?: mixed
-     * } $request
+     * Approves a domain transfer using the provided transfer code.
      *
      * @return array{
      *   name: string|null,
@@ -346,15 +344,83 @@ final class DomainService
      *   expirationDate: \DateTimeImmutable|null
      * }
      */
-    public function transfer(array $request): array
+    public function transfer(string $domain, string $transferCode): array
+    {
+        $name = $this->inputNormalizer->requireDomainName($domain);
+
+        if ('' === \trim($transferCode)) {
+            throw new \InvalidArgumentException('Domain transfer code must be a non-empty string.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_APPROVE,
+            $name,
+            $transferCode,
+        );
+    }
+
+    /**
+     * Starts the transfer flow and requests transfer code-related state from the registry.
+     *
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function getCode(string $domain): array
+    {
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_REQUEST,
+            $this->inputNormalizer->requireDomainName($domain),
+        );
+    }
+
+    /**
+     * Queries current transfer state for a domain.
+     *
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function getState(string $domain): array
+    {
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_QUERY,
+            $this->inputNormalizer->requireDomainName($domain),
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    private function executeTransferOperation(string $operation, string $name, ?string $authInfo = null): array
     {
         $xml = $this->transferRequestBuilder->build(
             new DomainTransferRequest(
-                $this->inputNormalizer->requireTransferOperation($request),
-                $this->inputNormalizer->requireName($request),
-                $this->inputNormalizer->optionalPositiveInt($request, 'period'),
-                $this->inputNormalizer->optionalPeriodUnit($request),
-                $this->inputNormalizer->optionalNullableString($request, 'authInfo'),
+                $operation,
+                $name,
+                null,
+                'y',
+                $authInfo,
             ),
             $this->tridGenerator->nextId(),
         );

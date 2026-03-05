@@ -48,6 +48,10 @@ final class DomainInfoResponseParserTest extends TestCase
             . '<extension>'
             . '<domainExt:domain-ext xmlns:domainExt="http://www.rnids.rs/epp/xml/domain-rnids-ext-1.0">'
             . '<domainExt:isWhoisPrivacy>1</domainExt:isWhoisPrivacy>'
+            . '<domainExt:isDomainVerified>false</domainExt:isDomainVerified>'
+            . '<domainExt:domainVerifiedOn>2026-01-03T00:00:00.0Z</domainExt:domainVerifiedOn>'
+            . '<domainExt:domainVerificationRequestExpiresOn>2026-02-03T00:00:00.0Z</domainExt:domainVerificationRequestExpiresOn>'
+            . '<domainExt:isWhoisPrivacyPaid>0</domainExt:isWhoisPrivacyPaid>'
             . '<domainExt:operationMode>secure</domainExt:operationMode>'
             . '<domainExt:notifyAdmin>0</domainExt:notifyAdmin>'
             . '<domainExt:dnsSec>1</domainExt:dnsSec>'
@@ -72,6 +76,14 @@ final class DomainInfoResponseParserTest extends TestCase
         self::assertSame('ns2.example.rs', $response->nameservers[1]->name);
         self::assertSame([ '192.0.2.2', '2001:db8::2' ], $response->nameservers[1]->addresses);
         self::assertTrue($response->whoisPrivacy);
+        self::assertFalse($response->isDomainVerified);
+        self::assertSame('2026-01-03T00:00:00+00:00', $response->domainVerifiedOn?->format('c'));
+        self::assertSame(
+            '2026-02-03T00:00:00+00:00',
+            $response->domainVerificationRequestExpiresOn?->format('c'),
+        );
+        self::assertFalse($response->isWhoisPrivacyPaid);
+        self::assertSame('2026-01-02T00:00:00+00:00', $response->updateDate?->format('c'));
         self::assertSame('secure', $response->operationMode);
         self::assertFalse($response->notifyAdmin);
         self::assertTrue($response->dnsSec);

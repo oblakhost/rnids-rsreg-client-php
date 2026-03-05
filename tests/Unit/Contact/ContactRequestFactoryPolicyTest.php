@@ -162,6 +162,54 @@ final class ContactRequestFactoryPolicyTest extends TestCase
         );
     }
 
+    public function testCreateAllowsEmptyNameForLegalEntityWithOrganization(): void
+    {
+        $factory = new ContactRequestFactory();
+        $payload = $this->validCreatePayload();
+        $payload['postalInfo']['name'] = '';
+        $payload['postalInfo']['organization'] = 'RNIDS Test Company';
+        $payload['extension'] = [
+            'isLegalEntity' => '1',
+        ];
+
+        $request = $factory->createFromArray($payload);
+
+        self::assertSame('', $request->postalInfo->name);
+        self::assertSame('RNIDS Test Company', $request->postalInfo->organization);
+        self::assertSame('1', $request->extension?->isLegalEntity);
+    }
+
+    public function testCreateRejectsEmptyNameForLegalEntityWithoutOrganization(): void
+    {
+        $factory = new ContactRequestFactory();
+        $payload = $this->validCreatePayload();
+        $payload['postalInfo']['name'] = '';
+        $payload['extension'] = [
+            'isLegalEntity' => '1',
+        ];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Contact postalInfo key "name" must be a non-empty string.');
+
+        $factory->createFromArray($payload);
+    }
+
+    public function testCreateRejectsEmptyNameForNonLegalEntityEvenWithOrganization(): void
+    {
+        $factory = new ContactRequestFactory();
+        $payload = $this->validCreatePayload();
+        $payload['postalInfo']['name'] = '';
+        $payload['postalInfo']['organization'] = 'RNIDS Test Company';
+        $payload['extension'] = [
+            'isLegalEntity' => '0',
+        ];
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Contact postalInfo key "name" must be a non-empty string.');
+
+        $factory->createFromArray($payload);
+    }
+
     /**
      * @return array{
      *   email: string,

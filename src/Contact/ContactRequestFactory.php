@@ -47,9 +47,11 @@ final class ContactRequestFactory
      */
     public function createFromArray(array $request): ContactCreateRequest
     {
+        $extension = $this->optionalExtension($request, true);
+
         return new ContactCreateRequest(
             $this->contactIdPolicy->normalizeForCreate($request['id'] ?? null),
-            $this->requirePostalInfo($request),
+            $this->requirePostalInfoForCreate($request, $extension),
             $this->optionalNullableString($request, 'voice'),
             $this->optionalNullableString($request, 'fax'),
             $this->requireString(
@@ -59,7 +61,7 @@ final class ContactRequestFactory
             ),
             $this->optionalNullableString($request, 'authInfo'),
             $this->optionalDisclose($request),
-            $this->optionalExtension($request, true),
+            $extension,
         );
     }
 
@@ -155,6 +157,24 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $request
      */
+    private function requirePostalInfoForCreate(array $request, ?ContactExtension $extension): ContactPostalInfo
+    {
+        $postalInfo = $this->requirePostalInfo($request);
+
+        if ('' !== \trim($postalInfo->name)) {
+            return $postalInfo;
+        }
+
+        if ($this->isLegalEntityCreateWithoutNaturalPersonName($extension, $postalInfo)) {
+            return $postalInfo;
+        }
+
+        throw new \InvalidArgumentException('Contact postalInfo key "name" must be a non-empty string.');
+    }
+
+    /**
+     * @param array<string, mixed> $request
+     */
     private function optionalPostalInfo(array $request): ?ContactPostalInfo
     {
         $postalInfo = $request['postalInfo'] ?? null;
@@ -169,7 +189,13 @@ final class ContactRequestFactory
             );
         }
 
-        return $this->parsePostalInfo($postalInfo);
+        $parsedPostalInfo = $this->parsePostalInfo($postalInfo);
+
+        if ('' === \trim($parsedPostalInfo->name)) {
+            throw new \InvalidArgumentException('Contact postalInfo key "name" must be a non-empty string.');
+        }
+
+        return $parsedPostalInfo;
     }
 
     /**
@@ -199,14 +225,20 @@ final class ContactRequestFactory
 
         return new ContactPostalInfo(
             $type,
-            $this->requireString(
-                $postalInfo,
-                'name',
-                'Contact postalInfo key "%s" must be a non-empty string.',
-            ),
+            $this->optionalStringAllowingEmpty($postalInfo, 'name'),
             $this->optionalNullableString($postalInfo, 'organization'),
             $this->parseAddress($address),
         );
+    }
+
+    private function isLegalEntityCreateWithoutNaturalPersonName(
+        ?ContactExtension $extension,
+        ContactPostalInfo $postalInfo,
+    ): bool {
+        return null !== $extension
+            && '1' === $extension->isLegalEntity
+            && null !== $postalInfo->organization
+            && '' !== \trim($postalInfo->organization);
     }
 
     /**
@@ -358,6 +390,20 @@ final class ContactRequestFactory
         }
 
         return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $request
+     */
+    private function optionalStringAllowingEmpty(array $request, string $key): string
+    {
+        if (!\array_key_exists($key, $request) || !\is_string($request[$key])) {
+            throw new \InvalidArgumentException(
+                \sprintf('Contact postalInfo key "%s" must be a string.', $key),
+            );
+        }
+
+        return $request[$key];
     }
 
     private function normalizeString(mixed $value, string $errorPattern, int $index): string

@@ -153,11 +153,11 @@ final class ContactInfoResponseParser
 
         $type = $this->normalizePostalInfoType($postalInfoNode);
 
-        $name = $this->firstRelativeNodeValue($xpath, 'contact:name', $postalInfoNode);
+        $name = $this->firstRelativeNodeValue($xpath, 'contact:name', $postalInfoNode) ?? '';
         $city = $this->firstRelativeNodeValue($xpath, 'contact:addr/contact:city', $postalInfoNode);
         $countryCode = $this->firstRelativeNodeValue($xpath, 'contact:addr/contact:cc', $postalInfoNode);
 
-        if (null === $name || null === $city || null === $countryCode) {
+        if (null === $city || null === $countryCode) {
             return null;
         }
 

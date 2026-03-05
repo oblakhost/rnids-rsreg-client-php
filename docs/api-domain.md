@@ -158,21 +158,17 @@ At least one mutation key must be present: `add`, `remove`, `registrant`, or `au
 
 Deletes a domain.
 
-### `transfer(array $request): array`
+### `transfer(string $domain, string $transferCode): array`
 
-Handles transfer lifecycle operations (`request|query|cancel|approve|reject`).
+Approves a domain transfer using the provided transfer code.
 
-Request shape:
+### `getCode(string $domain): array`
 
-```php
-array{
-  operation?: mixed,
-  name?: mixed,
-  period?: mixed,
-  periodUnit?: mixed,
-  authInfo?: mixed
-}
-```
+Runs transfer operation `request` for the domain.
+
+### `getState(string $domain): array`
+
+Runs transfer operation `query` for the domain.
 
 Response shape:
 

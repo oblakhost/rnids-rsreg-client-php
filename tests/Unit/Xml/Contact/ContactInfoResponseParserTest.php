@@ -74,4 +74,35 @@ final class ContactInfoResponseParserTest extends TestCase
         self::assertSame('123', $response->ident);
         self::assertSame('RS123', $response->vatNo);
     }
+
+    public function testParseKeepsPostalInfoWhenNameIsEmpty(): void
+    {
+        $parser = new ContactInfoResponseParser();
+
+        $response = $parser->parse(
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+            . '<response>'
+            . '<resData>'
+            . '<contact:infData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0">'
+            . '<contact:id>C-2</contact:id>'
+            . '<contact:postalInfo type="loc">'
+            . '<contact:name></contact:name>'
+            . '<contact:addr>'
+            . '<contact:street>Main 1</contact:street>'
+            . '<contact:city>Belgrade</contact:city>'
+            . '<contact:cc>RS</contact:cc>'
+            . '</contact:addr>'
+            . '</contact:postalInfo>'
+            . '</contact:infData>'
+            . '</resData>'
+            . '</response>'
+            . '</epp>',
+            new ResponseMetadata(1000, 'OK', 'CL-2', 'SV-2'),
+        );
+
+        self::assertNotNull($response->postalInfo);
+        self::assertSame('', $response->postalInfo?->name);
+        self::assertSame('Belgrade', $response->postalInfo?->address->city);
+    }
 }
