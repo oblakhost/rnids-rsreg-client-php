@@ -177,6 +177,13 @@ final class ContactServiceTest extends TestCase
         self::assertStringContainsString('<contact:info', $transport->writtenPayload);
         self::assertSame('C-300', $result['id']);
         self::assertSame('ok', $result['statuses'][0]);
+        self::assertSame('loc', $result['postalType']);
+        self::assertSame('Person Example', $result['postalName']);
+        self::assertSame('Main 1', $result['postalStreet1']);
+        self::assertNull($result['postalStreet2']);
+        self::assertNull($result['postalStreet3']);
+        self::assertSame('Belgrade', $result['postalCity']);
+        self::assertSame('RS', $result['postalCountryCode']);
         self::assertSame('Belgrade', $result['postalInfo']['address']['city']);
         self::assertSame('12345', $result['ident']);
     }

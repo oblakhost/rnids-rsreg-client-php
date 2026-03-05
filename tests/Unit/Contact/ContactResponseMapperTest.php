@@ -75,6 +75,16 @@ final class ContactResponseMapperTest extends TestCase
 
         self::assertSame('C-300', $mapped['id']);
         self::assertSame('ok', $mapped['statuses'][0]);
+        self::assertSame('loc', $mapped['postalType']);
+        self::assertSame('Person Example', $mapped['postalName']);
+        self::assertNull($mapped['postalOrganization']);
+        self::assertSame('Main 1', $mapped['postalStreet1']);
+        self::assertNull($mapped['postalStreet2']);
+        self::assertNull($mapped['postalStreet3']);
+        self::assertSame('Belgrade', $mapped['postalCity']);
+        self::assertSame('RS', $mapped['postalCountryCode']);
+        self::assertNull($mapped['postalProvince']);
+        self::assertNull($mapped['postalPostalCode']);
         self::assertSame('Belgrade', $mapped['postalInfo']['address']['city']);
         self::assertSame('12345', $mapped['ident']);
     }

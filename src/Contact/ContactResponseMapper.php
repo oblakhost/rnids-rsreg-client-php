@@ -42,6 +42,16 @@ final class ContactResponseMapper
      *   id: string|null,
      *   roid: string|null,
      *   statuses: list<string>,
+     *   postalType: string|null,
+     *   postalName: string|null,
+     *   postalOrganization: string|null,
+     *   postalStreet1: string|null,
+     *   postalStreet2: string|null,
+     *   postalStreet3: string|null,
+     *   postalCity: string|null,
+     *   postalCountryCode: string|null,
+     *   postalProvince: string|null,
+     *   postalPostalCode: string|null,
      *   postalInfo: array{
      *     type: string,
      *     name: string,
@@ -75,8 +85,29 @@ final class ContactResponseMapper
     public function mapInfoResponse(ContactInfoResponse $response): array
     {
         $postalInfo = null;
+        $postalType = null;
+        $postalName = null;
+        $postalOrganization = null;
+        $postalStreet1 = null;
+        $postalStreet2 = null;
+        $postalStreet3 = null;
+        $postalCity = null;
+        $postalCountryCode = null;
+        $postalProvince = null;
+        $postalPostalCode = null;
 
         if (null !== $response->postalInfo) {
+            $postalType = $response->postalInfo->type;
+            $postalName = $response->postalInfo->name;
+            $postalOrganization = $response->postalInfo->organization;
+            $postalStreet1 = $response->postalInfo->address->streets[0] ?? null;
+            $postalStreet2 = $response->postalInfo->address->streets[1] ?? null;
+            $postalStreet3 = $response->postalInfo->address->streets[2] ?? null;
+            $postalCity = $response->postalInfo->address->city;
+            $postalCountryCode = $response->postalInfo->address->countryCode;
+            $postalProvince = $response->postalInfo->address->province;
+            $postalPostalCode = $response->postalInfo->address->postalCode;
+
             $postalInfo = [
                 'address' => [
                     'city' => $response->postalInfo->address->city,
@@ -104,7 +135,17 @@ final class ContactResponseMapper
             'identExpiry' => $response->identExpiry,
             'identKind' => $response->identKind,
             'legalEntity' => $response->legalEntity,
+            'postalCity' => $postalCity,
+            'postalCountryCode' => $postalCountryCode,
             'postalInfo' => $postalInfo,
+            'postalName' => $postalName,
+            'postalOrganization' => $postalOrganization,
+            'postalPostalCode' => $postalPostalCode,
+            'postalProvince' => $postalProvince,
+            'postalStreet1' => $postalStreet1,
+            'postalStreet2' => $postalStreet2,
+            'postalStreet3' => $postalStreet3,
+            'postalType' => $postalType,
             'roid' => $response->roid,
             'statuses' => $response->statuses,
             'transferDate' => $response->transferDate,
