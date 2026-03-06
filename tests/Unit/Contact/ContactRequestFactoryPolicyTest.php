@@ -179,6 +179,21 @@ final class ContactRequestFactoryPolicyTest extends TestCase
         self::assertSame('1', $request->extension?->isLegalEntity);
     }
 
+    public function testCreateAllowsNonEmptyNameForLegalEntity(): void
+    {
+        $factory = new ContactRequestFactory();
+        $payload = $this->validCreatePayload();
+        $payload['postalInfo']['name'] = 'Legal Contact Person';
+        $payload['extension'] = [
+            'isLegalEntity' => '1',
+        ];
+
+        $request = $factory->createFromArray($payload);
+
+        self::assertSame('Legal Contact Person', $request->postalInfo->name);
+        self::assertSame('1', $request->extension?->isLegalEntity);
+    }
+
     public function testCreateRejectsEmptyNameForLegalEntityWithoutOrganization(): void
     {
         $factory = new ContactRequestFactory();

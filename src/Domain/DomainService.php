@@ -247,30 +247,32 @@ final class DomainService
     }
 
     /**
-     * @param array{
-     *   name?: mixed,
-     *   currentExpirationDate?: mixed,
-     *   period?: mixed,
-     *   periodUnit?: mixed
-     * }|non-empty-string $request
-     * @param int|null $years Renewal period used by the simplified API variant.
+     * Renews a domain for the requested number of years.
      *
-     * @return array{name: string|null, expirationDate: \DateTimeImmutable|null}
+     * If the current expiry date is not provided, it is resolved from {@see self::info()}.
+     *
+     * @param non-empty-string $domain
+     * @param int<1,10> $years
+     * @param null|string|\DateTimeInterface $expiry Current expiration date used for EPP renew matching.
+     *
+     * @return array{domain: string, expiryDate: \DateTimeImmutable|null}
      */
-    public function renew(string|array $request, ?int $years = null): array
+    public function renew(string $domain, int $years = 1, null|string|\DateTimeInterface $expiry = null): array
     {
-        $normalizedRequest = $this->inputNormalizer->normalizeRenewRequest(
-            $request,
-            $years,
-            fn(string $name): string => $this->resolveCurrentExpirationDate($name),
-        );
+        $name = $this->inputNormalizer->requireDomainName($domain);
+
+        if ($years < 1 || $years > 10) {
+            throw new \InvalidArgumentException('Domain renew years must be between 1 and 10.');
+        }
+
+        $resolvedExpiry = $this->resolveRenewExpiryDate($name, $expiry);
 
         $xml = $this->renewRequestBuilder->build(
             new DomainRenewRequest(
-                $this->inputNormalizer->requireName($normalizedRequest),
-                $this->inputNormalizer->requireCurrentExpirationDate($normalizedRequest),
-                $this->inputNormalizer->optionalPositiveInt($normalizedRequest, 'period'),
-                $this->inputNormalizer->optionalPeriodUnit($normalizedRequest),
+                $name,
+                $resolvedExpiry,
+                $years,
+                'y',
             ),
             $this->tridGenerator->nextId(),
         );
@@ -281,7 +283,12 @@ final class DomainService
                 $this->renewResponseParser->parse($responseXml, $metadata),
         );
 
-        return $this->responseMapper->mapRenewResponse($response);
+        $renewData = $this->responseMapper->mapRenewResponse($response);
+
+        return [
+            'domain' => $name,
+            'expiryDate' => $renewData['expirationDate'],
+        ];
     }
 
     /**
@@ -446,6 +453,19 @@ final class DomainService
         }
 
         return $expirationDate->format('Y-m-d');
+    }
+
+    private function resolveRenewExpiryDate(string $name, null|string|\DateTimeInterface $expiry): string
+    {
+        if (null === $expiry) {
+            return $this->resolveCurrentExpirationDate($name);
+        }
+
+        if ($expiry instanceof \DateTimeInterface) {
+            return $expiry->format('Y-m-d');
+        }
+
+        return $this->inputNormalizer->normalizeExpirationDateForRenew($expiry);
     }
 
     /**

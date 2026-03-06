@@ -616,21 +616,16 @@ final class DomainServiceTest extends TestCase
         };
 
         $service = new DomainService($transport, null, $generator);
-        $result = $service->renew([
-            'currentExpirationDate' => '2027-02-01',
-            'name' => 'example.rs',
-            'period' => 1,
-            'periodUnit' => 'y',
-        ]);
+        $result = $service->renew('example.rs', 1, '2027-02-01');
 
         self::assertStringContainsString('<domain:renew', $transport->writtenPayload);
         self::assertStringContainsString(
             '<domain:curExpDate>2027-02-01</domain:curExpDate>',
             $transport->writtenPayload,
         );
-        self::assertSame('example.rs', $result['name']);
-        self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
-        self::assertSame('2028-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
+        self::assertSame('example.rs', $result['domain']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['expiryDate']);
+        self::assertSame('2028-02-01T00:00:00+00:00', $result['expiryDate']?->format('c'));
     }
 
     public function testDeleteSendsDomainDeleteCommandAndMapsParsedResponse(): void
@@ -751,8 +746,126 @@ final class DomainServiceTest extends TestCase
             '<domain:period unit="y">1</domain:period>',
             $transport->writtenPayload,
         );
-        self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
-        self::assertSame('2028-02-01T00:00:00+00:00', $result['expirationDate']?->format('c'));
+        self::assertSame('example.rs', $result['domain']);
+        self::assertInstanceOf(\DateTimeImmutable::class, $result['expiryDate']);
+        self::assertSame('2028-02-01T00:00:00+00:00', $result['expiryDate']?->format('c'));
+    }
+
+    public function testRenewAcceptsDateTimeInterfaceExpiry(): void
+    {
+        $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                $this->writtenPayload = $payload;
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="1000"><msg>Command completed successfully</msg></result>'
+                    . '<resData>'
+                    . '<domain:renData xmlns:domain="urn:ietf:params:xml:ns:domain-1.0">'
+                    . '<domain:name>example.rs</domain:name>'
+                    . '<domain:exDate>2028-02-01T00:00:00.0Z</domain:exDate>'
+                    . '</domain:renData>'
+                    . '</resData>'
+                    . '<trID><clTRID>DOMAIN-00000012</clTRID><svTRID>SV-12</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+        $service->renew('example.rs', 1, new \DateTimeImmutable('2027-02-01T08:00:00+01:00'));
+
+        self::assertStringContainsString(
+            '<domain:curExpDate>2027-02-01</domain:curExpDate>',
+            $transport->writtenPayload,
+        );
+    }
+
+    public function testRenewThrowsWhenYearsAreOutsideAllowedRange(): void
+    {
+        $transport = new class () implements Transport {
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function readFrame(): string
+            {
+                return '';
+            }
+        };
+
+        $service = new DomainService($transport);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Domain renew years must be between 1 and 10.');
+
+        $service->renew('example.rs', 11, '2027-02-01');
+    }
+
+    public function testRenewThrowsProtocolExceptionWhenExpiryDoesNotMatchRegistryState(): void
+    {
+        $transport = new class () implements Transport {
+            public function connect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function disconnect(): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function writeFrame(string $payload): void
+            {
+                // Not needed for this unit test.
+            }
+
+            public function readFrame(): string
+            {
+                return '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
+                    . '<response>'
+                    . '<result code="2306"><msg>Current expiration date does not match object state</msg></result>'
+                    . '<trID><clTRID>DOMAIN-00000013</clTRID><svTRID>SV-13</svTRID></trID>'
+                    . '</response>'
+                    . '</epp>';
+            }
+        };
+
+        $service = new DomainService($transport);
+
+        $this->expectException(\RNIDS\Exception\ProtocolException::class);
+        $this->expectExceptionMessage('EPP command failed with result code 2306');
+
+        $service->renew('example.rs', 1, '2027-02-01');
     }
 
     public function testTransferApprovesDomainTransferAndMapsParsedResponse(): void
