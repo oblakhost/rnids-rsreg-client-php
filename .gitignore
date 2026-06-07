@@ -21,3 +21,8 @@ tests/Fixtures/client.pem
 
 # Build artifacts
 build/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key

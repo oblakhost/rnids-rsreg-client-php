@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "rnids_epp_client",
+  "project_id": "350e01ea-5cf0-48af-9105-a74e952af478"
+}
