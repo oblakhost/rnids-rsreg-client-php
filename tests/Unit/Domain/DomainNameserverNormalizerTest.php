@@ -39,7 +39,10 @@ final class DomainNameserverNormalizerTest extends TestCase
             [
                 [ 'name' => 'ns1.example.rs' ],
                 [
-                    'addresses' => [ '192.0.2.1', '2001:db8::1' ],
+                    'addresses' => [
+                        [ 'address' => '192.0.2.1', 'ipVersion' => 'v4' ],
+                        [ 'address' => '2001:db8::1', 'ipVersion' => 'v6' ],
+                    ],
                     'name' => 'ns2.example.rs',
                 ],
             ],
@@ -107,5 +110,29 @@ final class DomainNameserverNormalizerTest extends TestCase
                 'name' => 'ns1.example.rs',
             ],
         ]);
+    }
+
+    public function testNormalizeSimplifiedNameserversAcceptsExplicitAddressVersion(): void
+    {
+        $normalizer = new DomainNameserverNormalizer();
+
+        self::assertSame(
+            [
+                [
+                    'addresses' => [
+                        [ 'address' => '2001:db8::1', 'ipVersion' => 'v6' ],
+                    ],
+                    'name' => 'ns1.example.rs',
+                ],
+            ],
+            $normalizer->normalizeSimplifiedNameservers([
+                [
+                    'addresses' => [
+                        [ 'address' => '2001:db8::1', 'ipVersion' => 'v6' ],
+                    ],
+                    'name' => 'ns1.example.rs',
+                ],
+            ]),
+        );
     }
 }

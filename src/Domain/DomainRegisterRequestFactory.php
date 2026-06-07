@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RNIDS\Domain;
 
 use RNIDS\Domain\Dto\DomainExtension;
+use RNIDS\Domain\Dto\DomainNameserverAddress;
 use RNIDS\Domain\Dto\DomainRegisterContact;
 use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRegisterRequest;
@@ -159,7 +160,7 @@ final class DomainRegisterRequestFactory
     /**
      * @param array<string, mixed> $nameserver
      *
-     * @return list<string>
+     * @return list<DomainNameserverAddress>
      */
     private function parseNameserverAddresses(array $nameserver, int $index): array
     {
@@ -175,26 +176,57 @@ final class DomainRegisterRequestFactory
         }
 
         return \array_values(\array_map(
-            fn(mixed $address, int $addressIndex): string =>
+            fn(mixed $address, int $addressIndex): DomainNameserverAddress =>
                 $this->parseNameserverAddress($address, $index, $addressIndex),
             $addresses,
             \array_keys($addresses),
         ));
     }
 
-    private function parseNameserverAddress(mixed $address, int $index, int $addressIndex): string
+    private function parseNameserverAddress(mixed $address, int $index, int $addressIndex): DomainNameserverAddress
     {
-        if (!\is_string($address) || '' === \trim($address)) {
-            throw new \InvalidArgumentException(
-                \sprintf(
-                    'Domain register request nameserver at index %d has invalid address at index %d.',
-                    $index,
-                    $addressIndex,
-                ),
-            );
+        if (\is_string($address) && '' !== \trim($address)) {
+            return new DomainNameserverAddress($address, $this->inferIpVersion($address));
         }
 
-        return $address;
+        if (\is_array($address)) {
+            return $this->parseStructuredNameserverAddress($address, $index, $addressIndex);
+        }
+
+        throw $this->invalidNameserverAddress($index, $addressIndex);
+    }
+
+    /**
+     * @param array<string, mixed> $address
+     */
+    private function parseStructuredNameserverAddress(
+        array $address,
+        int $index,
+        int $addressIndex,
+    ): DomainNameserverAddress {
+        $addressValue = $address['address'] ?? null;
+        $ipVersion = $address['ipVersion'] ?? null;
+
+        if (!\is_string($addressValue) || '' === \trim($addressValue)) {
+            throw $this->invalidNameserverAddress($index, $addressIndex);
+        }
+
+        if (!\is_string($ipVersion) || !\in_array($ipVersion, [ 'v4', 'v6' ], true)) {
+            throw $this->invalidNameserverAddress($index, $addressIndex);
+        }
+
+        return new DomainNameserverAddress($addressValue, $ipVersion);
+    }
+
+    private function invalidNameserverAddress(int $index, int $addressIndex): \InvalidArgumentException
+    {
+        return new \InvalidArgumentException(
+            \sprintf(
+                'Domain register request nameserver at index %d has invalid address at index %d.',
+                $index,
+                $addressIndex,
+            ),
+        );
     }
 
     /**
@@ -298,6 +330,15 @@ final class DomainRegisterRequestFactory
             $this->optionalBool($extension, 'notifyAdmin'),
             $this->optionalBool($extension, 'dnsSec'),
         );
+    }
+
+    private function inferIpVersion(string $address): string
+    {
+        if (false !== \filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            return 'v6';
+        }
+
+        return 'v4';
     }
 
     /**

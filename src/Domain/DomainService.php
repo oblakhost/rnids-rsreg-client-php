@@ -252,7 +252,7 @@ final class DomainService
      * If the current expiry date is not provided, it is resolved from {@see self::info()}.
      *
      * @param non-empty-string $domain
-     * @param int<1,10> $years
+     * @param int $years
      * @param null|string|\DateTimeInterface $expiry Current expiration date used for EPP renew matching.
      *
      * @return array{domain: string, expiryDate: \DateTimeImmutable|null}

@@ -48,8 +48,8 @@ final class DomainRegisterRequestBuilderTest extends TestCase
         self::assertStringContainsString('<domain:period unit="y">1</domain:period>', $xml);
         self::assertStringContainsString('<domain:hostObj>ns1.example.rs</domain:hostObj>', $xml);
         self::assertStringContainsString('<domain:hostName>ns2.example.rs</domain:hostName>', $xml);
-        self::assertStringContainsString('<domain:hostAddr>192.0.2.2</domain:hostAddr>', $xml);
-        self::assertStringContainsString('<domain:hostAddr>2001:db8::2</domain:hostAddr>', $xml);
+        self::assertStringContainsString('<domain:hostAddr ip="v4">192.0.2.2</domain:hostAddr>', $xml);
+        self::assertStringContainsString('<domain:hostAddr ip="v6">2001:db8::2</domain:hostAddr>', $xml);
         self::assertStringContainsString('<domain:registrant>REG-1</domain:registrant>', $xml);
         self::assertStringContainsString('<domain:contact type="admin">ADM-1</domain:contact>', $xml);
         self::assertStringContainsString('<domain:contact type="tech">TEC-1</domain:contact>', $xml);

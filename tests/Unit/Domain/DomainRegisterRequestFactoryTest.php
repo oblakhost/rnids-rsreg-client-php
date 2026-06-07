@@ -34,7 +34,10 @@ final class DomainRegisterRequestFactoryTest extends TestCase
             'nameservers' => [
                 [ 'name' => 'ns1.example.rs' ],
                 [
-                    'addresses' => [ '192.0.2.10', '2001:db8::10' ],
+                    'addresses' => [
+                        '192.0.2.10',
+                        [ 'address' => '2001:db8::10', 'ipVersion' => 'v6' ],
+                    ],
                     'name' => 'ns2.example.rs',
                 ],
             ],
@@ -51,7 +54,10 @@ final class DomainRegisterRequestFactoryTest extends TestCase
         self::assertCount(3, $request->contacts);
         self::assertCount(2, $request->nameservers);
         self::assertSame('ns2.example.rs', $request->nameservers[1]->name);
-        self::assertSame([ '192.0.2.10', '2001:db8::10' ], $request->nameservers[1]->addresses);
+        self::assertSame('192.0.2.10', $request->nameservers[1]->addresses[0]->address);
+        self::assertSame('v4', $request->nameservers[1]->addresses[0]->ipVersion);
+        self::assertSame('2001:db8::10', $request->nameservers[1]->addresses[1]->address);
+        self::assertSame('v6', $request->nameservers[1]->addresses[1]->ipVersion);
         self::assertNotNull($request->extension);
         self::assertSame('Registrant supplied note', $request->extension->remark);
         self::assertFalse($request->extension->isWhoisPrivacy);

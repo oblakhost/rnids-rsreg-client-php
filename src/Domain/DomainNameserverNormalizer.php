@@ -9,7 +9,7 @@ final class DomainNameserverNormalizer
     /**
      * @param non-empty-string|array<int, mixed>|null $nameservers
      *
-     * @return list<array{name: string, addresses?: list<string>}>
+     * @return list<array{name: string, addresses?: list<array{address: string, ipVersion: string}>}>
      */
     public function normalizeSimplifiedNameservers(string|array|null $nameservers): array
     {
@@ -37,7 +37,7 @@ final class DomainNameserverNormalizer
     }
 
     /**
-     * @return array{name: string, addresses?: list<string>}
+     * @return array{name: string, addresses?: list<array{address: string, ipVersion: string}>}
      */
     private function normalizeSingleNameserver(mixed $nameserver, int $index): array
     {
@@ -83,7 +83,7 @@ final class DomainNameserverNormalizer
     /**
      * @param array<string, mixed> $nameserver
      *
-     * @return list<string>
+     * @return list<array{address: string, ipVersion: string}>
      */
     private function extractNameserverAddresses(array $nameserver, int $index): array
     {
@@ -100,7 +100,7 @@ final class DomainNameserverNormalizer
         }
 
         return \array_values(\array_map(
-            fn(mixed $address, int $addressIndex): string => $this->normalizeNameserverAddress(
+            fn(mixed $address, int $addressIndex): array => $this->normalizeNameserverAddress(
                 $address,
                 $addressIndex,
             ),
@@ -109,15 +109,62 @@ final class DomainNameserverNormalizer
         ));
     }
 
-    private function normalizeNameserverAddress(mixed $address, int $addressIndex): string
+    /**
+     * @return array{address: string, ipVersion: string}
+     */
+    private function normalizeNameserverAddress(mixed $address, int $addressIndex): array
     {
-        if (!\is_string($address) || '' === \trim($address)) {
-            throw new \InvalidArgumentException(
-                \sprintf('Domain register nameserver address at index %d is invalid.', $addressIndex),
-            );
+        if (\is_string($address) && '' !== \trim($address)) {
+            return $this->normalizeStringAddress($address);
         }
 
-        return $address;
+        if (\is_array($address)) {
+            return $this->normalizeStructuredAddress($address, $addressIndex);
+        }
+
+        throw $this->invalidNameserverAddress($addressIndex);
+    }
+
+    /**
+     * @return array{address: string, ipVersion: string}
+     */
+    private function normalizeStringAddress(string $address): array
+    {
+        return [
+            'address' => $address,
+            'ipVersion' => $this->inferIpVersion($address),
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $address
+     *
+     * @return array{address: string, ipVersion: string}
+     */
+    private function normalizeStructuredAddress(array $address, int $addressIndex): array
+    {
+        $addressValue = $address['address'] ?? null;
+        $ipVersion = $address['ipVersion'] ?? null;
+
+        if (!\is_string($addressValue) || '' === \trim($addressValue)) {
+            throw $this->invalidNameserverAddress($addressIndex);
+        }
+
+        if (!\is_string($ipVersion) || !\in_array($ipVersion, [ 'v4', 'v6' ], true)) {
+            throw $this->invalidNameserverAddress($addressIndex);
+        }
+
+        return [
+            'address' => $addressValue,
+            'ipVersion' => $ipVersion,
+        ];
+    }
+
+    private function invalidNameserverAddress(int $addressIndex): \InvalidArgumentException
+    {
+        return new \InvalidArgumentException(
+            \sprintf('Domain register nameserver address at index %d is invalid.', $addressIndex),
+        );
     }
 
     private function requireDomainName(string $name): string
@@ -127,5 +174,14 @@ final class DomainNameserverNormalizer
         }
 
         return $name;
+    }
+
+    private function inferIpVersion(string $address): string
+    {
+        if (false !== \filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            return 'v6';
+        }
+
+        return 'v4';
     }
 }

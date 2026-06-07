@@ -201,7 +201,7 @@ final class DomainInputNormalizer
      *   name: string,
      *   period: int,
      *   periodUnit: string,
-     *   nameservers: list<array{name: string, addresses?: list<string>}>,
+     *   nameservers: list<array{name: string, addresses?: list<array{address: string, ipVersion: string}>}>,
      *   registrant: string,
      *   contacts: list<array{type: string, handle: string}>,
      *   authInfo?: string,

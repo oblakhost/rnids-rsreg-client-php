@@ -146,34 +146,46 @@ final class DomainInfoResponseParser
     private function parseContactsByType(\DOMXPath $xpath): array
     {
         $nodes = $xpath->query('/epp:epp/epp:response/epp:resData/domain:infData/domain:contact');
+        $contacts = $this->emptyContactMap();
 
         if (false === $nodes || 0 === $nodes->length) {
-            return [
-                'admin' => null,
-                'tech' => null,
-            ];
+            return $contacts;
         }
 
-        $contacts = [
-            'admin' => null,
-            'tech' => null,
-        ];
-
         foreach ($nodes as $node) {
-            $contact = $this->parseContactNode($node);
-
-            if (null === $contact) {
-                continue;
-            }
-
-            if ('admin' !== $contact['type'] && 'tech' !== $contact['type']) {
-                continue;
-            }
-
-            $contacts[$contact['type']] = $contact['handle'];
+            $this->appendSupportedContact($contacts, $node);
         }
 
         return $contacts;
+    }
+
+    /**
+     * @return array{admin: string|null, tech: string|null}
+     */
+    private function emptyContactMap(): array
+    {
+        return [
+            'admin' => null,
+            'tech' => null,
+        ];
+    }
+
+    /**
+     * @param array{admin: string|null, tech: string|null} $contacts
+     */
+    private function appendSupportedContact(array &$contacts, \DOMNode $node): void
+    {
+        $contact = $this->parseContactNode($node);
+
+        if (null === $contact) {
+            return;
+        }
+
+        if ('admin' !== $contact['type'] && 'tech' !== $contact['type']) {
+            return;
+        }
+
+        $contacts[$contact['type']] = $contact['handle'];
     }
 
     /**

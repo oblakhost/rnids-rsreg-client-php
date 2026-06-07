@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Domain;
 
+use RNIDS\Domain\Dto\DomainNameserverAddress;
 use RNIDS\Domain\Dto\DomainRegisterContact;
 use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRegisterRequest;
@@ -81,7 +82,11 @@ final class DomainRegisterRequestBuilder
             . \implode(
                 '',
                 \array_map(
-                    static fn(string $address): string => XmlComposer::element('domain:hostAddr', $address),
+                    static fn(DomainNameserverAddress $address): string => '<domain:hostAddr ip="'
+                        . XmlComposer::escape($address->ipVersion)
+                        . '">'
+                        . XmlComposer::escape($address->address)
+                        . '</domain:hostAddr>',
                     $nameserver->addresses,
                 ),
             )

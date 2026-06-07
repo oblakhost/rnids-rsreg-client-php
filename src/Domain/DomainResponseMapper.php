@@ -148,20 +148,27 @@ final class DomainResponseMapper
         $mapped = [];
 
         foreach ($nameservers as $nameserver) {
-            $mapped[$nameserver->name] = [
-                'ipv4' => [],
-                'ipv6' => [],
-            ];
+            $mapped[$nameserver->name] = $this->mapNameserverAddresses($nameserver->addresses);
+        }
 
-            foreach ($nameserver->addresses as $address) {
-                if (\str_contains($address, ':')) {
-                    $mapped[$nameserver->name]['ipv6'][] = $address;
+        return $mapped;
+    }
 
-                    continue;
-                }
+    /**
+     * @param list<string> $addresses
+     *
+     * @return array{ipv4: list<string>, ipv6: list<string>}
+     */
+    private function mapNameserverAddresses(array $addresses): array
+    {
+        $mapped = [
+            'ipv4' => [],
+            'ipv6' => [],
+        ];
 
-                $mapped[$nameserver->name]['ipv4'][] = $address;
-            }
+        foreach ($addresses as $address) {
+            $key = \str_contains($address, ':') ? 'ipv6' : 'ipv4';
+            $mapped[$key][] = $address;
         }
 
         return $mapped;
