@@ -65,7 +65,9 @@ final class NativeStreamTransportTest extends TestCase
         try {
             $transport->readFrame();
         } finally {
-            \fclose($stream);
+            if (\is_resource($stream)) {
+                \fclose($stream);
+            }
         }
     }
 

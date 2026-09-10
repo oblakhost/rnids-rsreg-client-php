@@ -10,7 +10,7 @@ This project is a modern RNIDS/RSreg EPP client for PHP 8.1+, with strict typing
 
 - PHP 8.1+
 - Composer
-- `ext-json`
+- `ext-json`, `ext-dom`, and `ext-openssl`
 
 ### Install dependencies
 
@@ -51,7 +51,26 @@ Run live RNIDS integration tests explicitly:
 composer test:live
 ```
 
-These tests depend on external connectivity and credentials/certificates. If preflight conditions are not met, suites are skipped with explicit reasons.
+`composer test:live` fails when any live test is skipped. A direct full PHPUnit run may skip unavailable integration tests, so passing the unit gate does not certify RNIDS interoperability.
+
+Configure the RNIDS **test registry** before running mutations:
+
+- `RNIDS_EPP_USERNAME`, `RNIDS_EPP_PASSWORD`: an authorized test registrar account.
+- `RNIDS_EPP_CLIENT_CERT_PATH`: PEM containing the client certificate and matching private key; `RNIDS_EPP_CLIENT_CERT_PASSWORD` unlocks an encrypted key (set it to an empty string for an unencrypted key).
+- `RNIDS_EPP_CA_CERT_PATH`: trusted test-registry CA PEM. Peer and hostname verification are enabled.
+- `RNIDS_EPP_HOST` and `RNIDS_EPP_PORT`: optional endpoint overrides; defaults are `epp-test.rnids.rs:700`.
+- `RNIDS_EPP_REGISTER_NAMESERVERS`: comma-separated nameservers permitted by the test registry.
+- `RNIDS_EPP_TEST_HOST_IPV4`: an allowed IPv4 address for the temporary host lifecycle.
+- `RNIDS_EPP_TEST_DOMAIN`: an existing authorized fixture used only for a read-only info check.
+- `RNIDS_EPP_POLL_ACK_MESSAGE_ID`: exact ID of an approved disposable test message currently at the head of this account's queue. The acknowledgement test refuses a different message; it never drains the queue. This variable must be refreshed after a successful run.
+
+Preflight checks local credentials, PEM parsing, key matching, and certificate validity before trying TCP connectivity. The dummy unit-test certificate is excluded from discovery. Configure explicit certificate paths for reliable runs; never commit real credentials or keys.
+
+The mutation scenarios create their own contacts, domain, and host, exercise updates and domain renewal, then delete resources in dependency order. Cleanup failures fail the test and identify resources requiring manual removal. Domain creation/renewal requires sufficient test-account credit. Registry policy, approval delays, interrupted connections, or deletion restrictions can still require manual cleanup.
+
+CI runs live tests only through the `run_live` manual workflow input, or on pushes with repository variable `RNIDS_RUN_LIVE=true`. When enabled, missing secrets or skipped tests fail the job. Configure secrets `RNIDS_EPP_USER`, `RNIDS_EPP_PASS`, `RNIDS_EPP_CERT`, `RNIDS_EPP_ROOT`, and `RNIDS_EPP_CLIENT_CERT_PASSWORD`, plus repository variables matching the fixture names above. Otherwise the live job is visibly skipped.
+
+Transfer lifecycle verification remains an external prerequisite: it needs two authorized registrar accounts, certificates for each, a disposable domain, and the RNIDS transfer-code/approval workflow. This suite does not claim successful transfer coverage from a single account or fabricated responses. Secure-mode approval flows and real server interoperability also require a scheduled RNIDS test run after access is available.
 
 ## Coding conventions
 

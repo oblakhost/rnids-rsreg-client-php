@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Xml\Contact;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Xml\Contact\ContactInfoResponseParser;
@@ -12,6 +13,31 @@ use RNIDS\Xml\Response\ResponseMetadata;
 #[Group('unit')]
 final class ContactInfoResponseParserTest extends TestCase
 {
+    /** @return iterable<string, array{flag: string, expected: int|null}> */
+    public static function disclosureFlags(): iterable
+    {
+        yield 'enabled boolean' => [ 'flag' => 'true', 'expected' => 1 ];
+        yield 'disabled boolean' => [ 'flag' => 'false', 'expected' => 0 ];
+        yield 'enabled numeric' => [ 'flag' => '1', 'expected' => 1 ];
+        yield 'disabled numeric' => [ 'flag' => '0', 'expected' => 0 ];
+        yield 'invalid numeric' => [ 'flag' => '2', 'expected' => null ];
+    }
+
+    #[DataProvider('disclosureFlags')]
+    public function testParseDisclosureBooleanLexicalForms(string $flag, ?int $expected): void
+    {
+        $xml = '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0"><response><resData>'
+            . '<contact:infData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0">'
+            . '<contact:id>C-1</contact:id><contact:disclose flag="' . $flag . '">'
+            . '<contact:email/></contact:disclose></contact:infData></resData></response></epp>';
+        $result = (new ContactInfoResponseParser())->parse(
+            $xml,
+            new ResponseMetadata(1000, 'OK', 'TEST-1', 'SERVER-1'),
+        );
+
+        self::assertSame($expected, $result->disclose);
+    }
+
     public function testParseMapsContactInfoIncludingRnidsExtension(): void
     {
         $parser = new ContactInfoResponseParser();

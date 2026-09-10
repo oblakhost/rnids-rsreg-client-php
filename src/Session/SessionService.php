@@ -130,6 +130,24 @@ final class SessionService
     }
 
     /**
+     * Consumes the greeting sent by the server when the transport connects.
+     *
+     * @return array{
+     *   extensionUris: list<string>, languages: list<string>, objectUris: list<string>,
+     *   serverDate: string|null, serverId: string|null, versions: list<string>
+     * }
+     */
+    public function receiveGreeting(): array
+    {
+        $response = $this->executor->receiveGreeting(
+            fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata) =>
+                $this->helloResponseParser->parse($responseXml, $metadata),
+        );
+
+        return $this->responseMapper->mapHelloResponse($response);
+    }
+
+    /**
      * Performs EPP logout and closes the authenticated server session.
      *
      * @return array{} Empty array on successful logout command completion.
@@ -150,7 +168,7 @@ final class SessionService
     /**
      * Executes a poll request to fetch queue data or acknowledge a queue message.
      *
-     * @param array{messageId?: mixed, operation?: mixed} $request
+     * @param array{messageId?: non-empty-string, operation?: 'req'|'ack'} $request
      *
      * @return array{
      *   count: int|null,

@@ -28,6 +28,7 @@ final class ClientConfig
         array $objectUris,
         array $extensionUris,
         public readonly ?TlsConfig $tlsConfig,
+        public readonly bool $allowPlaintext = false,
     ) {
         $this->objectUris = $objectUris;
         $this->extensionUris = $extensionUris;

@@ -11,6 +11,11 @@ final class LastResponseMetadata
 {
     private ?ResponseMetadata $metadata = null;
 
+    public function clear(): void
+    {
+        $this->metadata = null;
+    }
+
     /**
      * Stores metadata from the most recently parsed EPP response.
      */

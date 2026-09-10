@@ -97,7 +97,7 @@ final class HostService
     /**
      * Checks one or more host names for availability.
      *
-     * @param array{names?: mixed}|list<mixed>|non-empty-string $request
+     * @param array{names: non-empty-list<non-empty-string>}|non-empty-list<non-empty-string>|non-empty-string $request
      *
      * @return list<array{name: string, available: bool, reason: string|null}>
      *   Availability data for each requested host name.
@@ -156,9 +156,12 @@ final class HostService
     /**
      * Creates a host object using full payload or simplified name/IP arguments.
      *
-     * @param array{name?: mixed, addresses?: mixed}|non-empty-string $request
-     * @param string|null $ipv4 Optional IPv4 address for the simplified API variant.
-     * @param string|null $ipv6 Optional IPv6 address for the simplified API variant.
+     * @param array{
+     *   name: non-empty-string,
+     *   addresses?: list<array{address: non-empty-string, ipVersion?: 'v4'|'v6'}>|null
+     * }|non-empty-string $request
+     * @param non-empty-string|null $ipv4 Optional IPv4 address for the simplified API variant.
+     * @param non-empty-string|null $ipv6 Optional IPv6 address for the simplified API variant.
      *
      * @return array{name: string|null, createDate: \DateTimeImmutable|null} Host creation result metadata.
      */
@@ -183,7 +186,18 @@ final class HostService
     /**
      * Updates an existing host object.
      *
-     * @param array{name?: mixed, add?: mixed, remove?: mixed, newName?: mixed} $request
+     * @param array{
+     *   name: non-empty-string,
+     *   add?: array{
+     *     addresses?: list<array{address: non-empty-string, ipVersion?: 'v4'|'v6'}>|null,
+     *     statuses?: list<non-empty-string>|null
+     *   }|null,
+     *   remove?: array{
+     *     addresses?: list<array{address: non-empty-string, ipVersion?: 'v4'|'v6'}>|null,
+     *     statuses?: list<non-empty-string>|null
+     *   }|null,
+     *   newName?: non-empty-string|null
+     * } $request
      *
      * @return array{} Empty array on successful host update command completion.
      */

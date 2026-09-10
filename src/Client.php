@@ -12,8 +12,13 @@ use RNIDS\Contact\ContactService;
 use RNIDS\Domain\DomainService;
 use RNIDS\Host\HostService;
 use RNIDS\Session\SessionService;
+use RNIDS\Session\SessionState;
+use RNIDS\Xml\ClTrid\IncrementalClTridGenerator;
+use RNIDS\Xml\CommandExecutor;
+use RNIDS\Xml\NamespaceRegistry;
 use RNIDS\Xml\Response\LastResponseMetadata;
 
+/** @phpstan-import-type ClientOptions from ClientConfigFactory */
 final class Client
 {
     private ClientConfig $clientConfig;
@@ -32,18 +37,18 @@ final class Client
 
     private ?\Throwable $lastCloseError = null;
 
-    private bool $initialized = false;
+    private SessionState $sessionState;
 
-    private bool $loggedIn = false;
+    private bool $negotiateDnssec;
 
     /**
      * Creates, initializes, and returns a ready-to-use client instance.
      *
-     * @param array<string, mixed> $config
+     * @param ClientOptions $config
      */
-    public static function ready(array $config): self
+    public static function ready(array $config, ?Transport $transport = null): self
     {
-        $client = new self($config);
+        $client = new self($config, $transport);
         $client->init();
 
         return $client;
@@ -52,32 +57,56 @@ final class Client
     /**
      * Creates a client instance with validated configuration and prepared services.
      *
-     * @param array<string, mixed> $config
+     * @param ClientOptions $config
      *   Client configuration including host/credentials and optional TLS/runtime settings.
      */
-    public function __construct(array $config)
+    public function __construct(array $config, ?Transport $transport = null)
     {
         $this->clientConfig = ClientConfigFactory::fromArray($config);
-        $this->transport = (new TransportFactory())->create(
+
+        if (null === $transport && null === $this->clientConfig->tlsConfig && !$this->clientConfig->allowPlaintext) {
+            throw new \InvalidArgumentException(
+                'TLS configuration is required. Set allowPlaintext=true only for an explicit plaintext connection.',
+            );
+        }
+
+        $this->transport = $transport ?? (new TransportFactory())->create(
             $this->clientConfig->connectionConfig,
             $this->clientConfig->tlsConfig,
         );
 
         $this->lastResponseMetadata = new LastResponseMetadata();
+        $this->sessionState = new SessionState();
+        $this->negotiateDnssec = !\array_key_exists('extensionUris', $config);
+        $executor = new CommandExecutor(
+            $this->transport,
+            null,
+            $this->lastResponseMetadata,
+            $this->sessionState,
+        );
+        $tridGenerator = new IncrementalClTridGenerator('RNIDS-' . \bin2hex(\random_bytes(8)));
         $this->sessionService = new SessionService(
             transport: $this->transport,
+            executor: $executor,
+            tridGenerator: $tridGenerator,
             lastResponseMetadata: $this->lastResponseMetadata,
         );
         $this->domainService = new DomainService(
             transport: $this->transport,
+            executor: $executor,
+            tridGenerator: $tridGenerator,
             lastResponseMetadata: $this->lastResponseMetadata,
         );
         $this->contactService = new ContactService(
             transport: $this->transport,
+            executor: $executor,
+            tridGenerator: $tridGenerator,
             lastResponseMetadata: $this->lastResponseMetadata,
         );
         $this->hostService = new HostService(
             transport: $this->transport,
+            executor: $executor,
+            tridGenerator: $tridGenerator,
             lastResponseMetadata: $this->lastResponseMetadata,
         );
     }
@@ -107,35 +136,43 @@ final class Client
     }
 
     /**
-     * Connects transport and authenticates the session with hello and login commands.
+     * Connects, consumes the server greeting, and waits for the login response.
      */
     public function init(): void
     {
-        if (true === $this->initialized) {
+        if ($this->sessionState->isAuthenticated()) {
             return;
         }
 
+        $this->lastResponseMetadata->clear();
+
         try {
             $this->transport->connect();
-            $this->sessionService->hello();
+            $this->sessionState->connect();
+            $greeting = $this->sessionService->receiveGreeting();
+            $extensionUris = $this->clientConfig->extensionUris;
+
+            $supportsDnssec = \in_array(NamespaceRegistry::SECDNS, $greeting['extensionUris'], true);
+
+            if ($this->negotiateDnssec && $supportsDnssec) {
+                $extensionUris[] = NamespaceRegistry::SECDNS;
+            }
+
             $this->sessionService->login([
                 'clientId' => $this->clientConfig->username,
-                'extensionUris' => $this->clientConfig->extensionUris,
+                'extensionUris' => $extensionUris,
                 'language' => $this->clientConfig->language,
                 'objectUris' => $this->clientConfig->objectUris,
                 'password' => $this->clientConfig->password,
                 'version' => $this->clientConfig->version,
             ]);
         } catch (\Throwable $throwable) {
-            $this->loggedIn = false;
-            $this->initialized = false;
-            $this->transport->disconnect();
+            $this->sessionState->disconnect();
+            $this->disconnectAndCaptureError($throwable);
 
             throw $throwable;
         }
 
-        $this->loggedIn = true;
-        $this->initialized = true;
         $this->lastCloseError = null;
     }
 
@@ -215,7 +252,7 @@ final class Client
 
     private function assertInitialized(): void
     {
-        if (true === $this->initialized) {
+        if ($this->sessionState->isAuthenticated()) {
             return;
         }
 
@@ -224,31 +261,27 @@ final class Client
 
     private function closeInternal(bool $suppressExceptions): void
     {
-        if (true !== $this->initialized) {
+        if (!isset($this->sessionState) || !$this->sessionState->isConnected()) {
             return;
         }
 
         $error = $this->logoutAndCaptureError();
         $error = $this->disconnectAndCaptureError($error);
-        $this->initialized = false;
+        $this->sessionState->disconnect();
         $this->finalizeClose($error, $suppressExceptions);
     }
 
     private function logoutAndCaptureError(): ?\Throwable
     {
-        if (true !== $this->loggedIn) {
+        if (!$this->sessionState->isAuthenticated()) {
             return null;
         }
 
         try {
             $this->sessionService->logout();
         } catch (\Throwable $throwable) {
-            $this->loggedIn = false;
-
             return $throwable;
         }
-
-        $this->loggedIn = false;
 
         return null;
     }

@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Integration;
 
-use PHPUnit\Framework\Attributes\Depends;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Client;
 use Tests\Integration\Support\IntegrationConfig;
+use Tests\Integration\Support\LiveCleanup;
 
 #[Group('integration')]
 #[Group('live')]
@@ -58,65 +58,111 @@ final class RnidsLiveIntegrationTest extends TestCase
     {
         $result = self::client()->session()->hello();
 
-        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
         self::assertIsArray($result['objectUris']);
         self::assertNotEmpty($result['objectUris']);
         self::assertContains('urn:ietf:params:xml:ns:domain-1.0', $result['objectUris']);
     }
 
-    /**
-     * @return non-empty-string
-     */
-    public function testDomainRegisterCreatesUniqueDomain(): string
+    public function testDomainLifecycleRegistersUpdatesRenewsAndDeletesOwnedResources(): void
     {
-        IntegrationConfig::ensureRegisterReadyOrFail();
+        $address = \getenv('RNIDS_EPP_TEST_HOST_IPV4');
+        self::assertNotFalse($address, 'Set RNIDS_EPP_TEST_HOST_IPV4 to an allowed test nameserver address.');
+        self::assertNotFalse(\filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4));
+        $client = self::client();
+        $cleanup = new LiveCleanup();
+        try {
+            $originalContact = $this->createContact($cleanup);
+            $replacementContact = $this->createContact($cleanup);
+            $domain = IntegrationConfig::uniqueRegisterDomainName();
+            $request = IntegrationConfig::domainRegisterRequest($domain);
+            $request['registrant'] = $originalContact;
+            $request['contacts'] = [
+                ['handle' => $originalContact, 'type' => 'admin'],
+                ['handle' => $originalContact, 'type' => 'tech'],
+            ];
+            $result = $client->domain()->register($request);
+            $cleanup->add('domain ' . $domain, static function () use ($client, $domain): void {
+                $client->domain()->delete($domain);
+                self::assertSame(1000, $client->responseMeta()['resultCode']);
+            });
+            self::assertSame(1000, $client->responseMeta()['resultCode']);
+            self::assertSame($domain, $result['name']);
+            self::assertInstanceOf(\DateTimeImmutable::class, $result['expirationDate']);
+            self::assertFalse($client->domain()->check($domain)[0]['available']);
+            $info = $client->domain()->info($domain);
+            self::assertSame($originalContact, $info['registrant']);
 
-        $domain = IntegrationConfig::uniqueRegisterDomainName();
-        $registerRequest = IntegrationConfig::domainRegisterRequest($domain);
-        $result = self::client()->domain()->register($registerRequest);
+            $client->domain()->update([
+                'name' => $domain,
+                'add' => ['contacts' => [['type' => 'tech', 'handle' => $replacementContact]]],
+                'remove' => ['contacts' => [['type' => 'tech', 'handle' => $originalContact]]],
+            ]);
+            self::assertSame(1000, $client->responseMeta()['resultCode']);
+            self::assertSame($replacementContact, $client->domain()->info($domain)['techContact']);
 
-        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-        self::assertSame($domain, $result['name']);
-        self::assertNotNull($result['createDate']);
-        self::assertNotNull($result['expirationDate']);
-
-        return $domain;
+            $renewed = $client->domain()->renew($domain, 1, $result['expirationDate']);
+            self::assertSame(1000, $client->responseMeta()['resultCode']);
+            self::assertGreaterThan($result['expirationDate'], $renewed['expiryDate']);
+            $this->exerciseHostLifecycle($domain);
+        } finally {
+            $cleanup->run();
+        }
     }
 
-    /**
-     * @param non-empty-string $registeredDomain
-     */
-    #[Depends('testDomainRegisterCreatesUniqueDomain')]
-    public function testDomainCheckReturnsItemForRegisteredDomain(string $registeredDomain): void
+    private function createContact(LiveCleanup $cleanup): string
     {
-        $domain = $registeredDomain;
-        $result = self::client()->domain()->check([ 'names' => [ $domain ] ]);
-
-        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-        self::assertCount(1, $result);
-        self::assertSame($domain, $result[0]['name']);
-        self::assertIsBool($result[0]['available']);
+        $client = self::client();
+        $payload = IntegrationConfig::contactFixtures()->withRunToken(\bin2hex(\random_bytes(4)))
+            ->individualCreatePayload();
+        $payload['id'] = 'OBL-' . $payload['id'];
+        $result = $client->contact()->create($payload);
+        $id = $result['id'] ?? $payload['id'];
+        $cleanup->add('contact ' . $id, static function () use ($client, $id): void {
+            $client->contact()->delete($id);
+            self::assertSame(1000, $client->responseMeta()['resultCode']);
+        });
+        self::assertSame(1000, $client->responseMeta()['resultCode']);
+        self::assertSame($payload['id'], $result['id']);
+        return $id;
     }
 
-    /**
-     * @param non-empty-string $registeredDomain
-     */
-    #[Depends('testDomainRegisterCreatesUniqueDomain')]
-    public function testDomainInfoReadsRegisteredDomain(string $registeredDomain): void
+    private function exerciseHostLifecycle(string $domain): void
     {
-        $domain = $registeredDomain;
-        $result = self::client()->domain()->info($domain);
-
-        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
-        self::assertSame($domain, $result['name']);
-        self::assertSame(IntegrationConfig::registerRegistrantHandle(), $result['registrant']);
-        self::assertIsArray($result['statuses']);
-        self::assertArrayHasKey('extension', $result);
+        $address = \getenv('RNIDS_EPP_TEST_HOST_IPV4');
+        self::assertNotFalse($address, 'Set RNIDS_EPP_TEST_HOST_IPV4 to an allowed test nameserver address.');
+        self::assertNotFalse(\filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4));
+        $host = 'ns1.' . $domain;
+        $createdHost = null;
+        try {
+            $result = self::client()->host()->create($host, $address);
+            $createdHost = $host;
+            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+            self::assertSame($host, $result['name']);
+            self::assertFalse(self::client()->host()->check($host)[0]['available']);
+            self::assertContains($address, self::client()->host()->info($host)['ipv4']);
+            $newName = 'ns2.' . $domain;
+            self::client()->host()->update(['name' => $host, 'newName' => $newName]);
+            self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+            $createdHost = $newName;
+            self::assertSame($newName, self::client()->host()->info($newName)['name']);
+        } finally {
+            if (null !== $createdHost) {
+                $cleanup = new LiveCleanup();
+                $cleanup->add('host ' . $createdHost, static function () use ($createdHost): void {
+                    self::client()->host()->delete($createdHost);
+                    self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+                });
+                $cleanup->run();
+            }
+        }
     }
 
     public function testDomainInfoReadsConfiguredStableFixtureDomain(): void
     {
-        $domain = IntegrationConfig::testDomainName();
+        $domain = \getenv('RNIDS_EPP_TEST_DOMAIN');
+        if (!\is_string($domain) || '' === \trim($domain)) {
+            self::markTestSkipped('RNIDS_EPP_TEST_DOMAIN is required for the stable fixture info test.');
+        }
         $result = self::client()->domain()->info($domain);
 
         self::assertSame(1000, self::client()->responseMeta()['resultCode']);
@@ -131,5 +177,17 @@ final class RnidsLiveIntegrationTest extends TestCase
         self::assertIsInt(self::client()->responseMeta()['resultCode']);
         self::assertArrayHasKey('count', $result);
         self::assertArrayHasKey('messageId', $result);
+    }
+
+    public function testPollAcknowledgesOnlyExplicitlyApprovedMessage(): void
+    {
+        $messageId = \getenv('RNIDS_EPP_POLL_ACK_MESSAGE_ID');
+        if (!\is_string($messageId) || '' === \trim($messageId)) {
+            self::markTestSkipped('Set RNIDS_EPP_POLL_ACK_MESSAGE_ID to an explicitly approved test queue message.');
+        }
+        $result = self::client()->session()->poll();
+        self::assertSame($messageId, $result['messageId'], 'Refusing to acknowledge a different queue message.');
+        self::client()->session()->poll(['operation' => 'ack', 'messageId' => $messageId]);
+        self::assertSame(1000, self::client()->responseMeta()['resultCode']);
     }
 }

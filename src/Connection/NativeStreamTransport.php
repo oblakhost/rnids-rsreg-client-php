@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RNIDS\Connection;
 
+use RNIDS\Exception\TransportException;
+
 final class NativeStreamTransport implements Transport
 {
     private EppFrameCodec $frameCodec;
@@ -73,7 +75,7 @@ final class NativeStreamTransport implements Transport
         if (false === $connection) {
             $details = $this->buildConnectionFailureDetails($warnings);
 
-            throw new \RuntimeException(
+            throw new \RNIDS\Exception\TransportException(
                 \sprintf(
                     'Failed to connect to %s: %s (code %d)%s',
                     $target,
@@ -108,24 +110,16 @@ final class NativeStreamTransport implements Transport
      */
     public function writeFrame(string $payload): void
     {
-        $connection = $this->requireConnection();
-        $frame = $this->frameCodec->encode($payload);
-        $remaining = \strlen($frame);
-        $writtenBytes = 0;
+        try {
+            $this->writePayload($payload);
+        } catch (\RuntimeException | \InvalidArgumentException $exception) {
+            $this->disconnect();
 
-        while ($remaining > 0) {
-            $written = \fwrite($connection, \substr($frame, $writtenBytes, $remaining));
-
-            if (false === $written) {
-                throw new \RuntimeException('Failed to write to EPP transport stream.');
-            }
-
-            if (0 === $written) {
-                throw new \RuntimeException('EPP transport stream returned zero bytes written.');
-            }
-
-            $writtenBytes += $written;
-            $remaining -= $written;
+            throw new \RNIDS\Exception\TransportException(
+                $exception->getMessage(),
+                (int) $exception->getCode(),
+                $exception,
+            );
         }
     }
 
@@ -134,16 +128,56 @@ final class NativeStreamTransport implements Transport
      */
     public function readFrame(): string
     {
+        try {
+            return $this->readPayload();
+        } catch (\RuntimeException | \InvalidArgumentException $exception) {
+            $this->disconnect();
+
+            throw new \RNIDS\Exception\TransportException(
+                $exception->getMessage(),
+                (int) $exception->getCode(),
+                $exception,
+            );
+        }
+    }
+
+    private function writePayload(string $payload): void
+    {
+        $connection = $this->requireConnection();
+        $frame = $this->frameCodec->encode($payload);
+        $remaining = \strlen($frame);
+        $writtenBytes = 0;
+
+        while ($remaining > 0) {
+            $written = @\fwrite($connection, \substr($frame, $writtenBytes, $remaining));
+
+            if (false === $written) {
+                throw new \RNIDS\Exception\TransportException('Failed to write to EPP transport stream.');
+            }
+
+            if (0 === $written) {
+                throw new \RNIDS\Exception\TransportException(
+                    'EPP transport stream returned zero bytes written.',
+                );
+            }
+
+            $writtenBytes += $written;
+            $remaining -= $written;
+        }
+    }
+
+    private function readPayload(): string
+    {
         $connection = $this->requireConnection();
         $prefix = $this->readExactBytes($connection, 4);
         $payloadLength = $this->frameCodec->decodeLengthPrefix($prefix);
 
         if ($payloadLength < 0) {
-            throw new \RuntimeException('Invalid EPP payload length (negative value).');
+            throw new \RNIDS\Exception\TransportException('Invalid EPP payload length (negative value).');
         }
 
         if ($payloadLength > 1000000) {
-            throw new \RuntimeException(
+            throw new \RNIDS\Exception\TransportException(
                 \sprintf('Packet size is too big: %d. Closing connection.', $payloadLength),
             );
         }
@@ -159,10 +193,11 @@ final class NativeStreamTransport implements Transport
         $buffer = '';
 
         while (\strlen($buffer) < $length) {
-            $chunk = \fread($connection, $length - \strlen($buffer));
+            $chunk = @\fread($connection, $length - \strlen($buffer));
 
             if (false === $chunk) {
-                throw new \RuntimeException('Failed reading from EPP transport stream.');
+                $this->assertConnectionStateAfterEmptyRead($connection);
+                throw new \RNIDS\Exception\TransportException('Failed reading from EPP transport stream.');
             }
 
             if ('' !== $chunk) {
@@ -182,12 +217,15 @@ final class NativeStreamTransport implements Transport
      */
     private function assertConnectionStateAfterEmptyRead($connection): void
     {
-        if (\feof($connection)) {
-            throw new \RuntimeException('Unexpected EOF while reading EPP frame.');
+        /** @var array{timed_out?: bool} $metadata */
+        $metadata = \stream_get_meta_data($connection);
+
+        if (true === ($metadata['timed_out'] ?? false)) {
+            throw new \RNIDS\Exception\TransportException('Timed out while reading EPP frame.');
         }
 
-        if (true === \stream_get_meta_data($connection)['timed_out']) {
-            throw new \RuntimeException('Timed out while reading EPP frame.');
+        if (\feof($connection)) {
+            throw new \RNIDS\Exception\TransportException('Unexpected EOF while reading EPP frame.');
         }
 
         \usleep(100);
@@ -199,7 +237,7 @@ final class NativeStreamTransport implements Transport
     private function requireConnection()
     {
         if (!\is_resource($this->connection)) {
-            throw new \RuntimeException('Transport is not connected.');
+            throw new \RNIDS\Exception\TransportException('Transport is not connected.');
         }
 
         return $this->connection;
@@ -265,7 +303,9 @@ final class NativeStreamTransport implements Transport
     private function assertReadableFile(string $path, string $label): void
     {
         if ('' === \trim($path) || !\is_file($path) || !\is_readable($path)) {
-            throw new \RuntimeException(\sprintf('%s is not readable: "%s".', $label, $path));
+            throw new \RNIDS\Exception\TransportException(
+                \sprintf('%s is not readable: "%s".', $label, $path),
+            );
         }
     }
 

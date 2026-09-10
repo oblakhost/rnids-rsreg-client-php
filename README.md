@@ -18,7 +18,7 @@ It focuses on deterministic XML handling, typed request/response modeling, stric
 
 1. RNIDS-first API design with fluent entry points for session, domain, contact, and host operations.
 2. Deterministic EPP request lifecycle over native stream transport and frame codec boundaries.
-3. Typed service-layer DTOs and normalized response mapping for reliable integrations.
+3. Validated request arrays, typed internal DTOs, and documented response shapes.
 4. Explicit protocol/transport exception strategy under `RNIDS\Exception\*`.
 5. Separate XML composition/parsing modules for easier testing and maintenance.
 6. Coverage-aware quality gate with static analysis and coding standards checks.
@@ -46,6 +46,11 @@ $client = Client::ready([
     'username' => 'client-id',
     'password' => 'secret',
     'language' => 'en',
+    'tls' => [
+        'clientCertificatePath' => '/secure/path/client.pem',
+        'clientCertificatePassword' => 'certificate-passphrase',
+        'caFilePath' => '/secure/path/rnids-ca.pem',
+    ],
 ]);
 
 $domainInfo = $client->domain()->info('example.rs');
@@ -57,14 +62,27 @@ $client->close();
 Common fluent entry points:
 
 - Session: `$client->session()->hello()`, `login()`, `logout()`, `poll()`
-- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, `transfer()`, `getCode()`, `getState()`
+- Domain: `$client->domain()->check()`, `info()`, `register()`, `renew()`, `update()`, `delete()`, and `transferRequest()` / `transferQuery()` / `transferApprove()` / `transferCancel()` / `transferReject()`
 - Contact: `$client->contact()->check()`, `create()`, `info()`, `update()`, `delete()`
 - Host: `$client->host()->check()`, `info()`, `create()`, `update()`, `delete()`
 
 Runtime contact policy:
 
-- Contact IDs are normalized to `OBL-...` for create/update flows.
-- Contact `extension.identDescription` is enforced to `Object Creation provided by Oblak Solutions.`
+- Contact creation retains the `OBL-...` generation policy; update, info, and delete preserve the supplied registry identifier.
+- Contact `extension.identDescription` preserves caller-provided values.
+
+Native connections require TLS by default. `allowPlaintext => true` explicitly enables
+unencrypted transport for a local test peer. Tests and custom adapters can inject a
+`Transport` through `new Client($config, $transport)` or `Client::ready($config, $transport)`.
+
+Domain updates support nameservers and glue addresses. DNSSEC uses DS records in
+`dnssec`, as shown in the [domain API](docs/api-domain.md); the legacy RNIDS `dnsSec`
+boolean alone does not provision DNSSEC. Existing `getCode()`, `getState()`, and
+`transfer()` methods remain available as compatibility aliases.
+
+`composer test` runs the offline quality gate, including a local EPP server.
+`composer test:live` is an explicit RNIDS validation run and fails if its prerequisites
+are missing or any tests are skipped. See [Contributing](CONTRIBUTING.md) for setup.
 
 ## Documentation
 

@@ -24,7 +24,8 @@ final class DomainRegisterRequestFactory
      *   registrant?: mixed,
      *   contacts?: mixed,
      *   authInfo?: mixed,
-     *   extension?: mixed
+     *   extension?: mixed,
+     *   dnssec?: array{records: list<array{keyTag: int, alg: int, digestType: int, digest: string}>}|null
      * } $request
      */
     public function fromArray(array $request): DomainRegisterRequest
@@ -38,6 +39,7 @@ final class DomainRegisterRequestFactory
             $this->requireContacts($request),
             $this->optionalNullableString($request, 'authInfo'),
             $this->optionalRegisterExtension($request),
+            (new DomainDnssecFactory())->create($request['dnssec'] ?? null),
         );
     }
 

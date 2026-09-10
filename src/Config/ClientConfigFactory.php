@@ -8,10 +8,23 @@ use RNIDS\Connection\ConnectionConfig;
 use RNIDS\Connection\TlsConfig;
 use RNIDS\Xml\NamespaceRegistry;
 
+/**
+ * @phpstan-type ClientOptions array{
+ *   host: non-empty-string, username: non-empty-string, password: non-empty-string,
+ *   port?: positive-int, connectTimeoutSeconds?: positive-int, readTimeoutSeconds?: positive-int,
+ *   language?: non-empty-string, version?: non-empty-string,
+ *   objectUris?: list<non-empty-string>, extensionUris?: list<non-empty-string>, allowPlaintext?: bool,
+ *   tls?: array{
+ *     clientCertificatePath: non-empty-string, clientCertificatePassword?: string|null,
+ *     caFilePath?: non-empty-string|null, peerName?: non-empty-string|null,
+ *     allowSelfSigned?: bool, verifyPeer?: bool|null, verifyPeerName?: bool|null
+ *   }
+ * }
+ */
 final class ClientConfigFactory
 {
     /**
-     * @param array<string, mixed> $config
+     * @param ClientOptions $config
      */
     public static function fromArray(array $config): ClientConfig
     {
@@ -43,6 +56,7 @@ final class ClientConfigFactory
                 ],
             ),
             tlsConfig: self::buildTlsConfig($config),
+            allowPlaintext: self::tlsOptionalBool($config, 'allowPlaintext') ?? false,
         );
     }
 
@@ -147,16 +161,20 @@ final class ClientConfigFactory
      */
     private static function buildTlsConfig(array $config): ?TlsConfig
     {
+        if (!\array_key_exists('tls', $config)) {
+            return null;
+        }
+
         $tls = $config['tls'] ?? null;
 
         if (!\is_array($tls)) {
-            return null;
+            throw new \InvalidArgumentException('Client config key "tls" must be a TLS configuration array.');
         }
 
         $certPath = $tls['clientCertificatePath'] ?? null;
 
-        if (!\is_string($certPath) || '' === $certPath) {
-            return null;
+        if (!\is_string($certPath) || '' === \trim($certPath)) {
+            throw new \InvalidArgumentException('TLS clientCertificatePath must be a non-empty string.');
         }
 
         return new TlsConfig(
@@ -177,7 +195,17 @@ final class ClientConfigFactory
     {
         $value = $tls[$key] ?? null;
 
-        return \is_string($value) ? $value : null;
+        if (null === $value) {
+            return null;
+        }
+
+        if (!\is_string($value) || ('clientCertificatePassword' !== $key && '' === \trim($value))) {
+            throw new \InvalidArgumentException(
+                \sprintf('TLS config key "%s" must be a valid string.', $key),
+            );
+        }
+
+        return $value;
     }
 
     /**
@@ -189,6 +217,12 @@ final class ClientConfigFactory
             return null;
         }
 
-        return (bool) $tls[$key];
+        $value = $tls[$key];
+
+        if (null !== $value && !\is_bool($value)) {
+            throw new \InvalidArgumentException(\sprintf('Client config key "%s" must be a boolean.', $key));
+        }
+
+        return $value;
     }
 }

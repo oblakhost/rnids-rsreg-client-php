@@ -9,7 +9,9 @@ use RNIDS\Domain\Dto\DomainCheckRequest;
 use RNIDS\Domain\Dto\DomainDeleteRequest;
 use RNIDS\Domain\Dto\DomainExtension;
 use RNIDS\Domain\Dto\DomainInfoRequest;
+use RNIDS\Domain\Dto\DomainNameserverAddress;
 use RNIDS\Domain\Dto\DomainRegisterContact;
+use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRenewRequest;
 use RNIDS\Domain\Dto\DomainTransferRequest;
 use RNIDS\Domain\Dto\DomainUpdateRequest;
@@ -35,6 +37,30 @@ use RNIDS\Xml\Response\LastResponseMetadata;
 
 /**
  * Provides domain command operations for check, info, and register flows.
+ *
+ * @phpstan-type CheckNamesInput non-empty-array<array-key, non-empty-string>
+ * @phpstan-type NameserverAddressInput non-empty-string|array{
+ *   address: non-empty-string, ipVersion: 'v4'|'v6'
+ * }
+ * @phpstan-type NameserverInput array{
+ *   name: non-empty-string, addresses?: array<int, NameserverAddressInput>|null
+ * }
+ * @phpstan-type ContactInput array{type: 'admin'|'tech'|'billing', handle: non-empty-string}
+ * @phpstan-type DsRecordInput array{
+ *   keyTag: int<0, 65535>, alg: 3|5|6|7|8|10|13|14, digestType: 1|2|3|4, digest: non-empty-string
+ * }
+ * @phpstan-type RegisterExtensionInput array{
+ *   isWhoisPrivacy?: bool|null, operationMode?: 'normal'|'secure'|null,
+ *   notifyAdmin?: bool|null, dnsSec?: bool|null, remark?: non-empty-string|null
+ * }
+ * @phpstan-type UpdateExtensionInput array{
+ *   isWhoisPrivacy?: bool|null, operationMode?: 'normal'|'secure'|null,
+ *   notifyAdmin?: bool|null, dnsSec?: bool|null, remark?: string|null
+ * }
+ * @phpstan-type UpdateSectionInput array{
+ *   contacts?: array<int, ContactInput>|null, statuses?: array<int, non-empty-string>|null,
+ *   nameservers?: non-empty-string|array<int, non-empty-string|NameserverInput>|null
+ * }
  */
 final class DomainService
 {
@@ -120,7 +146,7 @@ final class DomainService
     }
 
     /**
-     * @param array{names?: mixed}|list<mixed>|non-empty-string $request
+     * @param array{names: CheckNamesInput}|CheckNamesInput|non-empty-string $request
      *
      * @return list<array{name: string, available: bool, reason: string|null}>
      */
@@ -163,6 +189,9 @@ final class DomainService
      *   operationMode: string|null,
      *   notifyAdmin: bool,
      *   dnsSec: bool,
+     *   dnssec: array{records: list<array{keyTag: int, alg: int, digestType: int, digest: string}>},
+     *   hosts: list<string>,
+     *   whoisPrivacyPaidUntil: \DateTimeImmutable|null,
      *   remark: string|null
      * }
      */
@@ -186,28 +215,26 @@ final class DomainService
     }
 
     /**
+     * Both admin and tech contact types are required in the full request.
+     *
      * @param array{
-     *   name?: mixed,
-     *   period?: mixed,
-     *   periodUnit?: mixed,
-     *   nameservers?: mixed,
-     *   registrant?: mixed,
-     *   contacts?: mixed,
-     *   authInfo?: mixed,
-     *   extension?: mixed
+     *   name: non-empty-string,
+     *   period?: positive-int|null,
+     *   periodUnit?: 'y'|'m'|null,
+     *   nameservers?: array<int, NameserverInput>|null,
+     *   registrant: non-empty-string,
+     *   contacts: non-empty-array<int, ContactInput>,
+     *   authInfo?: non-empty-string|null,
+     *   extension?: RegisterExtensionInput|null,
+     *   dnssec?: array{records: non-empty-list<DsRecordInput>}|null
      * }|non-empty-string $request
      * @param non-empty-string|null $registrant
      * @param non-empty-string|null $adminContact
      * @param non-empty-string|null $techContact
-     * @param non-empty-string|array<int, mixed>|null $nameservers
-     * @param int|null $years
-     * @param array{
-     *   isWhoisPrivacy?: mixed,
-     *   operationMode?: mixed,
-     *   notifyAdmin?: mixed,
-     *   dnsSec?: mixed,
-     *   remark?: mixed
-     * }|null $extension
+     * @param non-empty-string|array<int, non-empty-string|NameserverInput>|null $nameservers
+     * @param positive-int|null $years
+     * @param non-empty-string|null $authInfo
+     * @param RegisterExtensionInput|null $extension
      *
      * @return array{name: string|null, createDate: \DateTimeImmutable|null, expirationDate: \DateTimeImmutable|null}
      */
@@ -312,12 +339,15 @@ final class DomainService
 
     /**
      * @param array{
-     *   name?: mixed,
-     *   add?: mixed,
-     *   remove?: mixed,
-     *   registrant?: mixed,
-     *   authInfo?: mixed,
-     *   extension?: mixed
+     *   name: non-empty-string,
+     *   add?: UpdateSectionInput|null,
+     *   remove?: UpdateSectionInput|null,
+     *   registrant?: non-empty-string|null,
+     *   authInfo?: non-empty-string|null,
+     *   extension?: UpdateExtensionInput|null,
+     *   dnssec?: array{
+     *     add?: list<DsRecordInput>, remove?: list<DsRecordInput>, removeAll?: bool
+     *   }|null
      * } $request
      *
      * @return array{} Empty array on successful domain update command completion.
@@ -419,6 +449,126 @@ final class DomainService
      *   expirationDate: \DateTimeImmutable|null
      * }
      */
+    public function transferRequest(string $domain, ?string $authInfo = null): array
+    {
+        if (null !== $authInfo && '' === \trim($authInfo)) {
+            throw new \InvalidArgumentException('Domain transfer authInfo must be non-empty when provided.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_REQUEST,
+            $this->inputNormalizer->requireDomainName($domain),
+            $authInfo,
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function transferQuery(string $domain, ?string $authInfo = null): array
+    {
+        if (null !== $authInfo && '' === \trim($authInfo)) {
+            throw new \InvalidArgumentException('Domain transfer authInfo must be non-empty when provided.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_QUERY,
+            $this->inputNormalizer->requireDomainName($domain),
+            $authInfo,
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function transferApprove(string $domain, ?string $authInfo = null): array
+    {
+        if (null !== $authInfo && '' === \trim($authInfo)) {
+            throw new \InvalidArgumentException('Domain transfer authInfo must be non-empty when provided.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_APPROVE,
+            $this->inputNormalizer->requireDomainName($domain),
+            $authInfo,
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function transferCancel(string $domain, ?string $authInfo = null): array
+    {
+        if (null !== $authInfo && '' === \trim($authInfo)) {
+            throw new \InvalidArgumentException('Domain transfer authInfo must be non-empty when provided.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_CANCEL,
+            $this->inputNormalizer->requireDomainName($domain),
+            $authInfo,
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
+    public function transferReject(string $domain, ?string $authInfo = null): array
+    {
+        if (null !== $authInfo && '' === \trim($authInfo)) {
+            throw new \InvalidArgumentException('Domain transfer authInfo must be non-empty when provided.');
+        }
+
+        return $this->executeTransferOperation(
+            DomainTransferRequest::OPERATION_REJECT,
+            $this->inputNormalizer->requireDomainName($domain),
+            $authInfo,
+        );
+    }
+
+    /**
+     * @return array{
+     *   name: string|null,
+     *   transferStatus: string|null,
+     *   requestClientId: string|null,
+     *   requestDate: \DateTimeImmutable|null,
+     *   actionClientId: string|null,
+     *   actionDate: \DateTimeImmutable|null,
+     *   expirationDate: \DateTimeImmutable|null
+     * }
+     */
     private function executeTransferOperation(string $operation, string $name, ?string $authInfo = null): array
     {
         $xml = $this->transferRequestBuilder->build(
@@ -475,25 +625,57 @@ final class DomainService
      *   remove?: mixed,
      *   registrant?: mixed,
      *   authInfo?: mixed,
-     *   extension?: mixed
+     *   extension?: mixed,
+     *   dnssec?: array{
+     *     add?: list<array{keyTag: int, alg: int, digestType: int, digest: string}>,
+     *     remove?: list<array{keyTag: int, alg: int, digestType: int, digest: string}>,
+     *     removeAll?: bool
+     *   }|null
      * } $request
      */
     private function buildUpdateRequest(array $request): DomainUpdateRequest
     {
+        $allowed = [ 'name', 'add', 'remove', 'registrant', 'authInfo', 'extension', 'dnssec' ];
+        if ([] !== \array_diff(\array_keys($request), $allowed)) {
+            throw new \InvalidArgumentException('Unknown domain update request key.');
+        }
+
         $name = $this->inputNormalizer->requireName($request);
         $add = $this->parseUpdateSection($request['add'] ?? null, 'add');
         $remove = $this->parseUpdateSection($request['remove'] ?? null, 'remove');
         $registrant = $this->inputNormalizer->optionalNullableString($request, 'registrant');
         $authInfo = $this->inputNormalizer->optionalNullableString($request, 'authInfo');
         $extension = $this->parseUpdateExtension($request['extension'] ?? null);
+        $dnssec = (new DomainDnssecFactory())->update($request['dnssec'] ?? null);
 
-        if (null === $add && null === $remove && null === $registrant && null === $authInfo) {
+        $baseChanges = \array_filter(
+            [ $add, $remove, $registrant, $authInfo, $extension ],
+            static fn(mixed $change): bool => null !== $change,
+        );
+        $this->assertStandaloneRegistrantChange($registrant, \count($baseChanges));
+        $hasBaseChanges = [] !== $baseChanges;
+        if (null !== $dnssec && $hasBaseChanges) {
+            throw new \InvalidArgumentException(
+                'RNIDS DNSSEC updates must be sent separately from other domain changes.',
+            );
+        }
+
+        if (!$hasBaseChanges && null === $dnssec) {
             throw new \InvalidArgumentException(
                 'Domain update request must include at least one of "add", "remove", "registrant", or "authInfo".',
             );
         }
 
-        return new DomainUpdateRequest($name, $add, $remove, $registrant, $authInfo, $extension);
+        return new DomainUpdateRequest($name, $add, $remove, $registrant, $authInfo, $extension, $dnssec);
+    }
+
+    private function assertStandaloneRegistrantChange(?string $registrant, int $changeCount): void
+    {
+        if (null !== $registrant && $changeCount > 1) {
+            throw new \InvalidArgumentException(
+                'RNIDS registrant updates must be sent separately from other domain changes.',
+            );
+        }
     }
 
     private function parseUpdateSection(mixed $section, string $key): ?DomainUpdateSection
@@ -508,10 +690,15 @@ final class DomainService
             );
         }
 
+        if ([] !== \array_diff(\array_keys($section), [ 'contacts', 'statuses', 'nameservers' ])) {
+            throw new \InvalidArgumentException('Unknown domain update section key.');
+        }
+
+        $nameservers = $this->parseUpdateNameservers($section['nameservers'] ?? []);
         $contacts = $this->parseUpdateContacts($section, $key);
         $statuses = $this->parseUpdateStatuses($section, $key);
 
-        if ([] === $contacts && [] === $statuses) {
+        if ([] === $contacts && [] === $statuses && [] === $nameservers) {
             throw new \InvalidArgumentException(
                 \sprintf(
                     'Domain update request section "%s" must include at least one of "contacts" or "statuses".',
@@ -520,7 +707,35 @@ final class DomainService
             );
         }
 
-        return new DomainUpdateSection($contacts, $statuses);
+        return new DomainUpdateSection($contacts, $statuses, $nameservers);
+    }
+
+    /** @return list<DomainRegisterNameserver> */
+    private function parseUpdateNameservers(mixed $nameservers): array
+    {
+        if ([] === $nameservers) {
+            return [];
+        }
+
+        if (!\is_array($nameservers) && !\is_string($nameservers)) {
+            throw new \InvalidArgumentException('Domain update nameservers must be a hostname or list.');
+        }
+
+        $normalized = (new DomainNameserverNormalizer())->normalizeSimplifiedNameservers($nameservers);
+
+        return \array_map(
+            static fn(array $nameserver): DomainRegisterNameserver => new DomainRegisterNameserver(
+                $nameserver['name'],
+                \array_map(
+                    static fn(array $address): DomainNameserverAddress => new DomainNameserverAddress(
+                        $address['address'],
+                        $address['ipVersion'],
+                    ),
+                    $nameserver['addresses'] ?? [],
+                ),
+            ),
+            $normalized,
+        );
     }
 
     /**
@@ -642,6 +857,15 @@ final class DomainService
             );
         }
 
+        $allowed = [ 'remark', 'isWhoisPrivacy', 'operationMode', 'notifyAdmin', 'dnsSec' ];
+        if ([] !== \array_diff(\array_keys($extension), $allowed)) {
+            throw new \InvalidArgumentException('Unknown domain update extension key.');
+        }
+
+        if ([] === \array_filter($extension, static fn(mixed $value): bool => null !== $value)) {
+            return null;
+        }
+
         return new DomainExtension(
             $this->parseUpdateExtensionRemark($extension),
             $this->parseUpdateExtensionBool($extension, 'isWhoisPrivacy'),
@@ -682,9 +906,9 @@ final class DomainService
             return null;
         }
 
-        if (!\is_string($operationMode) || '' === \trim($operationMode)) {
+        if (!\is_string($operationMode) || !\in_array($operationMode, [ 'normal', 'secure' ], true)) {
             throw new \InvalidArgumentException(
-                'Domain update request extension key "operationMode" must be a non-empty string when provided.',
+                'Domain update request extension key "operationMode" must be "normal" or "secure" when provided.',
             );
         }
 

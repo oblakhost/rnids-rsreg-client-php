@@ -47,6 +47,7 @@ final class DomainUpdateRequestBuilder
         }
 
         return '<' . $nodeName . '>'
+            . (new DomainNameserverXmlBuilder())->build($section->nameservers)
             . $this->contactsXml($section)
             . $this->statusesXml($section)
             . '</' . $nodeName . '>';
@@ -110,6 +111,9 @@ final class DomainUpdateRequestBuilder
 
     private function extensionXml(DomainUpdateRequest $request): string
     {
-        return $this->extensionXmlBuilder->build($request->extension);
+        return $this->extensionXmlBuilder->build(
+            $request->extension,
+            (new DomainDnssecXmlBuilder())->update($request->dnssec),
+        );
     }
 }

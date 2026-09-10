@@ -44,9 +44,13 @@ final class ContactIdPolicyTest extends TestCase
      */
     public static function updateNormalizationProvider(): iterable
     {
-        yield 'non prefixed id is normalized' => [
-            'expected' => 'OBL-C-20',
+        yield 'existing registry id is preserved' => [
+            'expected' => 'C-20',
             'input' => 'C-20',
+        ];
+        yield 'literal id is not trimmed' => [
+            'expected' => ' C-20 ',
+            'input' => ' C-20 ',
         ];
         yield 'prefixed id is preserved' => [
             'expected' => 'OBL-C-20',

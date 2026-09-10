@@ -16,6 +16,7 @@ use RNIDS\Contact\Dto\ContactUpdateRequest;
  */
 final class ContactRequestFactory
 {
+    /** @deprecated Identification descriptions are supplied by the caller. */
     public const ENFORCED_IDENT_DESCRIPTION = 'Object Creation provided by Oblak Solutions.';
 
     private ContactIdPolicy $contactIdPolicy;
@@ -26,7 +27,7 @@ final class ContactRequestFactory
     }
 
     /**
-     * @param array{ids?: mixed} $request
+     * @param array{ids: non-empty-list<non-empty-string>} $request
      */
     public function checkFromArray(array $request): ContactCheckRequest
     {
@@ -35,19 +36,37 @@ final class ContactRequestFactory
 
     /**
      * @param array{
-     *   id?: mixed,
-     *   postalInfo?: mixed,
-     *   voice?: mixed,
-     *   fax?: mixed,
-     *   email?: mixed,
-     *   authInfo?: mixed,
-     *   disclose?: mixed,
-     *   extension?: mixed
+     *   id?: string|null,
+     *   postalInfo: array{
+     *     type?: 'loc'|'int',
+     *     name: string,
+     *     organization?: non-empty-string|null,
+     *     address: array{
+     *       streets: non-empty-list<non-empty-string>,
+     *       city: non-empty-string,
+     *       countryCode: non-empty-string,
+     *       province?: non-empty-string|null,
+     *       postalCode?: non-empty-string|null
+     *     }
+     *   },
+     *   voice?: non-empty-string|null,
+     *   fax?: non-empty-string|null,
+     *   email: non-empty-string,
+     *   authInfo?: non-empty-string|null,
+     *   disclose?: 0|1|null,
+     *   extension?: array{
+     *     ident?: non-empty-string|null,
+     *     identDescription?: non-empty-string|null,
+     *     identExpiry?: non-empty-string|null,
+     *     identKind?: non-empty-string|null,
+     *     isLegalEntity?: non-empty-string|null,
+     *     vatNo?: non-empty-string|null
+     *   }|null
      * } $request
      */
     public function createFromArray(array $request): ContactCreateRequest
     {
-        $extension = $this->optionalExtension($request, true);
+        $extension = $this->optionalExtension($request);
 
         return new ContactCreateRequest(
             $this->contactIdPolicy->normalizeForCreate($request['id'] ?? null),
@@ -67,31 +86,55 @@ final class ContactRequestFactory
 
     /**
      * @param array{
-     *   id?: mixed,
-     *   addStatuses?: mixed,
-     *   removeStatuses?: mixed,
-     *   postalInfo?: mixed,
-     *   voice?: mixed,
-     *   fax?: mixed,
-     *   email?: mixed,
-     *   authInfo?: mixed,
-     *   disclose?: mixed,
-     *   extension?: mixed
+     *   id: non-empty-string,
+     *   addStatuses?: list<non-empty-string>|null,
+     *   removeStatuses?: list<non-empty-string>|null,
+     *   postalInfo?: array{
+     *     type?: 'loc'|'int',
+     *     name: string,
+     *     organization?: string|null,
+     *     address: array{
+     *       streets: non-empty-list<non-empty-string>,
+     *       city: non-empty-string,
+     *       countryCode: non-empty-string,
+     *       province?: string|null,
+     *       postalCode?: string|null
+     *     }
+     *   }|null,
+     *   voice?: string|null,
+     *   fax?: string|null,
+     *   email?: non-empty-string|null,
+     *   authInfo?: string|null,
+     *   disclose?: 0|1|null,
+     *   extension?: array{
+     *     ident?: string|null,
+     *     identDescription?: string|null,
+     *     identExpiry?: non-empty-string|null,
+     *     identKind?: non-empty-string|null,
+     *     isLegalEntity?: non-empty-string|null,
+     *     vatNo?: string|null
+     *   }|null
      * } $request
      */
     public function updateFromArray(array $request): ContactUpdateRequest
     {
+        $extension = $this->optionalExtension($request, true);
+
         $dto = new ContactUpdateRequest(
-            $this->contactIdPolicy->normalizeForUpdate($request['id'] ?? null),
+            $this->contactIdPolicy->normalizeForUpdate($this->requireString(
+                $request,
+                'id',
+                'Contact update request key "%s" must be a non-empty string.',
+            )),
             $this->optionalStatuses($request, 'addStatuses'),
             $this->optionalStatuses($request, 'removeStatuses'),
-            $this->optionalPostalInfo($request),
-            $this->optionalNullableString($request, 'voice'),
-            $this->optionalNullableString($request, 'fax'),
+            $this->optionalPostalInfo($request, $extension),
+            $this->optionalNullableString($request, 'voice', true),
+            $this->optionalNullableString($request, 'fax', true),
             $this->optionalNullableString($request, 'email'),
-            $this->optionalNullableString($request, 'authInfo'),
+            $this->optionalNullableString($request, 'authInfo', true),
             $this->optionalDisclose($request),
-            $this->optionalExtension($request, true),
+            $extension,
         );
 
         if (
@@ -165,7 +208,7 @@ final class ContactRequestFactory
             return $postalInfo;
         }
 
-        if ($this->isLegalEntityCreateWithoutNaturalPersonName($extension, $postalInfo)) {
+        if ($this->allowsEmptyName($extension, $postalInfo)) {
             return $postalInfo;
         }
 
@@ -175,7 +218,7 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $request
      */
-    private function optionalPostalInfo(array $request): ?ContactPostalInfo
+    private function optionalPostalInfo(array $request, ?ContactExtension $extension): ?ContactPostalInfo
     {
         $postalInfo = $request['postalInfo'] ?? null;
 
@@ -189,19 +232,19 @@ final class ContactRequestFactory
             );
         }
 
-        $parsedPostalInfo = $this->parsePostalInfo($postalInfo);
+        $parsed = $this->parsePostalInfo($postalInfo, true);
 
-        if ('' === \trim($parsedPostalInfo->name)) {
+        if ('' === \trim($parsed->name) && !$this->allowsEmptyName($extension, $parsed)) {
             throw new \InvalidArgumentException('Contact postalInfo key "name" must be a non-empty string.');
         }
 
-        return $parsedPostalInfo;
+        return $parsed;
     }
 
     /**
      * @param array<string, mixed> $postalInfo
      */
-    private function parsePostalInfo(array $postalInfo): ContactPostalInfo
+    private function parsePostalInfo(array $postalInfo, bool $allowEmpty = false): ContactPostalInfo
     {
         $type = $postalInfo['type'] ?? ContactPostalInfo::TYPE_LOC;
 
@@ -226,12 +269,12 @@ final class ContactRequestFactory
         return new ContactPostalInfo(
             $type,
             $this->optionalStringAllowingEmpty($postalInfo, 'name'),
-            $this->optionalNullableString($postalInfo, 'organization'),
-            $this->parseAddress($address),
+            $this->optionalNullableString($postalInfo, 'organization', $allowEmpty),
+            $this->parseAddress($address, $allowEmpty),
         );
     }
 
-    private function isLegalEntityCreateWithoutNaturalPersonName(
+    private function allowsEmptyName(
         ?ContactExtension $extension,
         ContactPostalInfo $postalInfo,
     ): bool {
@@ -244,7 +287,7 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $address
      */
-    private function parseAddress(array $address): ContactAddress
+    private function parseAddress(array $address, bool $allowEmpty): ContactAddress
     {
         $streets = $address['streets'] ?? null;
 
@@ -273,8 +316,8 @@ final class ContactRequestFactory
                 'countryCode',
                 'Contact address key "%s" must be a non-empty string.',
             ),
-            $this->optionalNullableString($address, 'province'),
-            $this->optionalNullableString($address, 'postalCode'),
+            $this->optionalNullableString($address, 'province', $allowEmpty),
+            $this->optionalNullableString($address, 'postalCode', $allowEmpty),
         );
     }
 
@@ -328,7 +371,7 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $request
      */
-    private function optionalExtension(array $request, bool $forceIdentDescription): ?ContactExtension
+    private function optionalExtension(array $request, bool $allowEmpty = false): ?ContactExtension
     {
         $extension = $request['extension'] ?? null;
 
@@ -342,20 +385,27 @@ final class ContactRequestFactory
             );
         }
 
-        $identDescription = $this->optionalNullableString($extension, 'identDescription');
-
-        if ($forceIdentDescription) {
-            $identDescription = self::ENFORCED_IDENT_DESCRIPTION;
-        }
-
-        return new ContactExtension(
-            $this->optionalNullableString($extension, 'ident'),
-            $identDescription,
+        $parsed = new ContactExtension(
+            $this->optionalNullableString($extension, 'ident', $allowEmpty),
+            $this->optionalNullableString($extension, 'identDescription', $allowEmpty),
             $this->optionalNullableString($extension, 'identExpiry'),
             $this->optionalNullableString($extension, 'identKind'),
             $this->optionalNullableString($extension, 'isLegalEntity'),
-            $this->optionalNullableString($extension, 'vatNo'),
+            $this->optionalNullableString($extension, 'vatNo', $allowEmpty),
         );
+
+        if (
+            null === $parsed->ident
+            && null === $parsed->identDescription
+            && null === $parsed->identExpiry
+            && null === $parsed->identKind
+            && null === $parsed->isLegalEntity
+            && null === $parsed->vatNo
+        ) {
+            return null;
+        }
+
+        return $parsed;
     }
 
     /**
@@ -375,7 +425,7 @@ final class ContactRequestFactory
     /**
      * @param array<string, mixed> $request
      */
-    private function optionalNullableString(array $request, string $key): ?string
+    private function optionalNullableString(array $request, string $key, bool $allowEmpty = false): ?string
     {
         $value = $request[$key] ?? null;
 
@@ -383,7 +433,7 @@ final class ContactRequestFactory
             return null;
         }
 
-        if (!\is_string($value) || '' === \trim($value)) {
+        if (!\is_string($value) || ('' === \trim($value) && (!$allowEmpty || '' !== $value))) {
             throw new \InvalidArgumentException(
                 \sprintf('Contact request key "%s" must be a non-empty string when provided.', $key),
             );

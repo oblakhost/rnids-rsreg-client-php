@@ -1,5 +1,8 @@
 # Library audit — 2026-09-10
 
+This is the original audit snapshot. Subsequent offline fixes and compatibility notes
+are recorded in [the remediation report](2026-09-10-remediation.md).
+
 The library has a useful separation between services, XML handling, and native
 transport, but passing tests currently overstate its operational reliability.
 The highest priorities are session response alignment, TLS configuration, domain

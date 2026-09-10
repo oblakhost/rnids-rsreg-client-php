@@ -118,7 +118,7 @@ final class IntegrationConfigTest extends TestCase
         self::assertSame('OBL-test-kontakt', IntegrationConfig::testContactHandle());
     }
 
-    public function testClientConfigUsesRelaxedTlsVerificationForRnidsTestEndpoint(): void
+    public function testClientConfigVerifiesRnidsServerAgainstConfiguredCa(): void
     {
         $this->setEnv('RNIDS_EPP_USERNAME', 'user-1');
         $this->setEnv('RNIDS_EPP_PASSWORD', 'pass-1');
@@ -126,8 +126,8 @@ final class IntegrationConfigTest extends TestCase
         $config = IntegrationConfig::clientConfig();
 
         self::assertArrayHasKey('tls', $config);
-        self::assertFalse($config['tls']['verifyPeer']);
-        self::assertFalse($config['tls']['verifyPeerName']);
+        self::assertTrue($config['tls']['verifyPeer']);
+        self::assertTrue($config['tls']['verifyPeerName']);
     }
 
     public function testClientConfigUsesConfiguredHostAndPortWhenProvided(): void

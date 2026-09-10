@@ -497,6 +497,8 @@ final class DomainServiceTest extends TestCase
 
             public function readFrame(): string
             {
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
@@ -508,7 +510,7 @@ final class DomainServiceTest extends TestCase
                     . '<domain:exDate>2027-02-01T00:00:00.0Z</domain:exDate>'
                     . '</domain:creData>'
                     . '</resData>'
-                    . '<trID><clTRID>DOMAIN-00000003</clTRID><svTRID>SV-3</svTRID></trID>'
+                    . '<trID><clTRID>' . $matches[1] . '</clTRID><svTRID>SV-3</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }
@@ -731,7 +733,13 @@ final class DomainServiceTest extends TestCase
 
             public function readFrame(): string
             {
-                return \array_shift($this->responses) ?? '';
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return (string) \preg_replace(
+                    '/<clTRID>[^<]+<\/clTRID>/',
+                    '<clTRID>' . $matches[1] . '</clTRID>',
+                    \array_shift($this->responses) ?? '',
+                );
             }
         };
 
@@ -773,6 +781,8 @@ final class DomainServiceTest extends TestCase
 
             public function readFrame(): string
             {
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
@@ -783,7 +793,7 @@ final class DomainServiceTest extends TestCase
                     . '<domain:exDate>2028-02-01T00:00:00.0Z</domain:exDate>'
                     . '</domain:renData>'
                     . '</resData>'
-                    . '<trID><clTRID>DOMAIN-00000012</clTRID><svTRID>SV-12</svTRID></trID>'
+                    . '<trID><clTRID>' . $matches[1] . '</clTRID><svTRID>SV-12</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }
@@ -833,6 +843,8 @@ final class DomainServiceTest extends TestCase
     public function testRenewThrowsProtocolExceptionWhenExpiryDoesNotMatchRegistryState(): void
     {
         $transport = new class () implements Transport {
+            public string $writtenPayload = '';
+
             public function connect(): void
             {
                 // Not needed for this unit test.
@@ -845,16 +857,18 @@ final class DomainServiceTest extends TestCase
 
             public function writeFrame(string $payload): void
             {
-                // Not needed for this unit test.
+                $this->writtenPayload = $payload;
             }
 
             public function readFrame(): string
             {
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
                     . '<result code="2306"><msg>Current expiration date does not match object state</msg></result>'
-                    . '<trID><clTRID>DOMAIN-00000013</clTRID><svTRID>SV-13</svTRID></trID>'
+                    . '<trID><clTRID>' . $matches[1] . '</clTRID><svTRID>SV-13</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }
@@ -981,6 +995,8 @@ final class DomainServiceTest extends TestCase
 
             public function readFrame(): string
             {
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
@@ -991,7 +1007,7 @@ final class DomainServiceTest extends TestCase
                     . '<domain:trStatus>pending</domain:trStatus>'
                     . '</domain:trnData>'
                     . '</resData>'
-                    . '<trID><clTRID>DOMAIN-00000007</clTRID><svTRID>SV-7</svTRID></trID>'
+                    . '<trID><clTRID>' . $matches[1] . '</clTRID><svTRID>SV-7</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }
@@ -1025,6 +1041,8 @@ final class DomainServiceTest extends TestCase
 
             public function readFrame(): string
             {
+                \preg_match('/<clTRID>([^<]+)<\/clTRID>/', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
@@ -1035,7 +1053,7 @@ final class DomainServiceTest extends TestCase
                     . '<domain:trStatus>clientApproved</domain:trStatus>'
                     . '</domain:trnData>'
                     . '</resData>'
-                    . '<trID><clTRID>DOMAIN-00000008</clTRID><svTRID>SV-8</svTRID></trID>'
+                    . '<trID><clTRID>' . $matches[1] . '</clTRID><svTRID>SV-8</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }

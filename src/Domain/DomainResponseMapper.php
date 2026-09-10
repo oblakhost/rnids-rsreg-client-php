@@ -52,6 +52,9 @@ final class DomainResponseMapper
      *   operationMode: string|null,
      *   notifyAdmin: bool,
      *   dnsSec: bool,
+     *   dnssec: array{records: list<array{keyTag: int, alg: int, digestType: int, digest: string}>},
+     *   hosts: list<string>,
+     *   whoisPrivacyPaidUntil: \DateTimeImmutable|null,
      *   remark: string|null
      * }
      */
@@ -63,9 +66,19 @@ final class DomainResponseMapper
             'createClientId' => $response->createClientId,
             'createDate' => $response->createDate,
             'dnsSec' => $response->dnsSec,
+            'dnssec' => ['records' => \array_map(
+                static fn(\RNIDS\Domain\Dto\DomainDsRecord $record): array => [
+                    'alg' => $record->alg,
+                    'digest' => $record->digest,
+                    'digestType' => $record->digestType,
+                    'keyTag' => $record->keyTag,
+                ],
+                $response->dsRecords,
+            )],
             'domainVerificationRequestExpiresOn' => $response->domainVerificationRequestExpiresOn,
             'domainVerifiedOn' => $response->domainVerifiedOn,
             'expirationDate' => $response->expirationDate,
+            'hosts' => $response->hosts,
             'isDomainVerified' => $response->isDomainVerified,
             'isWhoisPrivacyPaid' => $response->isWhoisPrivacyPaid,
             'name' => $response->name,
@@ -80,6 +93,7 @@ final class DomainResponseMapper
             'updateClientId' => $response->updateClientId,
             'updateDate' => $response->updateDate,
             'whoisPrivacy' => $response->whoisPrivacy,
+            'whoisPrivacyPaidUntil' => $response->whoisPrivacyPaidUntil,
         ];
     }
 

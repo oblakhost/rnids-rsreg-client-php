@@ -51,6 +51,10 @@ final class DomainNameserverNormalizer
             );
         }
 
+        if ([] !== \array_diff(\array_keys($nameserver), [ 'name', 'addresses' ])) {
+            throw new \InvalidArgumentException('Unknown domain nameserver key.');
+        }
+
         $name = $this->extractNameserverName($nameserver, $index);
         $addresses = $this->extractNameserverAddresses($nameserver, $index);
 
@@ -143,6 +147,10 @@ final class DomainNameserverNormalizer
      */
     private function normalizeStructuredAddress(array $address, int $addressIndex): array
     {
+        if ([] !== \array_diff(\array_keys($address), [ 'address', 'ipVersion' ])) {
+            throw new \InvalidArgumentException('Unknown domain nameserver address key.');
+        }
+
         $addressValue = $address['address'] ?? null;
         $ipVersion = $address['ipVersion'] ?? null;
 

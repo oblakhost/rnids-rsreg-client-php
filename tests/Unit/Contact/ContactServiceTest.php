@@ -42,9 +42,16 @@ final class ContactServiceTest extends TestCase
                     . '<resData><contact:chkData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0">'
                     . '<contact:cd><contact:id avail="1">C-100</contact:id></contact:cd>'
                     . '</contact:chkData></resData>'
-                    . '<trID><clTRID>CONTACT-00000001</clTRID><svTRID>SV-1</svTRID></trID>'
+                    . '<trID>' . $this->transactionIdXml() . '<svTRID>SV-1</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
+            }
+
+            private function transactionIdXml(): string
+            {
+                \preg_match('/<clTRID>.*?<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return $matches[0];
             }
         };
 
@@ -93,9 +100,16 @@ final class ContactServiceTest extends TestCase
                     . '<contact:id>C-200</contact:id>'
                     . '<contact:crDate>2026-03-01T00:00:00.0Z</contact:crDate>'
                     . '</contact:creData></resData>'
-                    . '<trID><clTRID>CONTACT-00000002</clTRID><svTRID>SV-2</svTRID></trID>'
+                    . '<trID>' . $this->transactionIdXml() . '<svTRID>SV-2</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
+            }
+
+            private function transactionIdXml(): string
+            {
+                \preg_match('/<clTRID>.*?<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return $matches[0];
             }
         };
 
@@ -165,9 +179,16 @@ final class ContactServiceTest extends TestCase
                     . '<contactExt:ident>12345</contactExt:ident>'
                     . '</contactExt:contact-ext>'
                     . '</extension>'
-                    . '<trID><clTRID>CONTACT-00000003</clTRID><svTRID>SV-3</svTRID></trID>'
+                    . '<trID>' . $this->transactionIdXml() . '<svTRID>SV-3</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
+            }
+
+            private function transactionIdXml(): string
+            {
+                \preg_match('/<clTRID>.*?<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return $matches[0];
             }
         };
 
@@ -214,9 +235,16 @@ final class ContactServiceTest extends TestCase
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
                     . '<result code="1000"><msg>OK</msg></result>'
-                    . '<trID><clTRID>CONTACT-00000004</clTRID><svTRID>SV-4</svTRID></trID>'
+                    . '<trID>' . $this->transactionIdXml() . '<svTRID>SV-4</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
+            }
+
+            private function transactionIdXml(): string
+            {
+                \preg_match('/<clTRID>.*?<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return $matches[0];
             }
         };
 
@@ -227,7 +255,7 @@ final class ContactServiceTest extends TestCase
         ]);
 
         self::assertStringContainsString('<contact:update', $transport->writtenPayload);
-        self::assertStringContainsString('<contact:id>OBL-C-400</contact:id>', $transport->writtenPayload);
+        self::assertStringContainsString('<contact:id>C-400</contact:id>', $transport->writtenPayload);
         self::assertSame([], $result);
     }
 
@@ -257,9 +285,16 @@ final class ContactServiceTest extends TestCase
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
                     . '<result code="1000"><msg>OK</msg></result>'
-                    . '<trID><clTRID>CONTACT-00000005</clTRID><svTRID>SV-5</svTRID></trID>'
+                    . '<trID>' . $this->transactionIdXml() . '<svTRID>SV-5</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
+            }
+
+            private function transactionIdXml(): string
+            {
+                \preg_match('/<clTRID>.*?<\/clTRID>/', $this->writtenPayload, $matches);
+
+                return $matches[0];
             }
         };
 

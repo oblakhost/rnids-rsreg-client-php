@@ -44,8 +44,8 @@ final class ContactRequestFactoryPolicyTest extends TestCase
      */
     public static function updateIdNormalizationProvider(): iterable
     {
-        yield 'non prefixed id is normalized' => [
-            'expected' => 'OBL-C-400',
+        yield 'existing registry id is preserved' => [
+            'expected' => 'C-400',
             'id' => 'C-400',
         ];
         yield 'prefixed id is preserved' => [
@@ -68,7 +68,7 @@ final class ContactRequestFactoryPolicyTest extends TestCase
     /**
      * @return iterable<string, list<string|null>>
      */
-    public static function forcedIdentDescriptionProvider(): iterable
+    public static function callerIdentDescriptionProvider(): iterable
     {
         yield 'null caller value' => [ null ];
         yield 'explicit caller value' => [ 'Caller value' ];
@@ -126,40 +126,59 @@ final class ContactRequestFactoryPolicyTest extends TestCase
         $factory->updateFromArray($payload);
     }
 
-    #[DataProvider('forcedIdentDescriptionProvider')]
-    public function testCreateExtensionIdentDescriptionIsForcedToPolicyValue(?string $callerValue): void
+    #[DataProvider('callerIdentDescriptionProvider')]
+    public function testCreatePreservesCallerIdentDescription(?string $callerValue): void
     {
         $factory = new ContactRequestFactory();
         $payload = $this->validCreatePayload();
-        $payload['extension'] = [ 'identDescription' => $callerValue ];
+        $payload['extension'] = [ 'ident' => '12345', 'identDescription' => $callerValue ];
 
         $request = $factory->createFromArray($payload);
 
         self::assertNotNull($request->extension);
-        self::assertSame(
-            ContactRequestFactory::ENFORCED_IDENT_DESCRIPTION,
-            $request->extension->identDescription,
-        );
+        self::assertSame($callerValue, $request->extension->identDescription);
     }
 
-    #[DataProvider('forcedIdentDescriptionProvider')]
-    public function testUpdateExtensionIdentDescriptionIsForcedToPolicyValue(?string $callerValue): void
+    #[DataProvider('callerIdentDescriptionProvider')]
+    public function testUpdatePreservesCallerIdentDescription(?string $callerValue): void
     {
         $factory = new ContactRequestFactory();
 
         $request = $factory->updateFromArray([
             'email' => 'updated@example.rs',
             'extension' => [
+                'ident' => '12345',
                 'identDescription' => $callerValue,
             ],
             'id' => 'C-400',
         ]);
 
         self::assertNotNull($request->extension);
-        self::assertSame(
-            ContactRequestFactory::ENFORCED_IDENT_DESCRIPTION,
-            $request->extension->identDescription,
-        );
+        self::assertSame($callerValue, $request->extension->identDescription);
+    }
+
+    public function testUpdateAllowsEmptyNameForLegalEntityWithOrganization(): void
+    {
+        $payload = $this->validCreatePayload();
+        $payload['postalInfo']['name'] = '';
+        $payload['postalInfo']['organization'] = 'RNIDS Test Company';
+        $payload['extension'] = [ 'isLegalEntity' => '1' ];
+
+        $request = (new ContactRequestFactory())->updateFromArray($payload);
+
+        self::assertSame('', $request->postalInfo?->name);
+        self::assertSame('RNIDS Test Company', $request->postalInfo?->organization);
+    }
+
+    public function testCreatePreservesAnOmittedIdentificationDescription(): void
+    {
+        $payload = $this->validCreatePayload();
+        $payload['extension'] = [ 'ident' => '12345' ];
+
+        $request = (new ContactRequestFactory())->createFromArray($payload);
+
+        self::assertSame('12345', $request->extension?->ident);
+        self::assertNull($request->extension?->identDescription);
     }
 
     public function testCreateAllowsEmptyNameForLegalEntityWithOrganization(): void

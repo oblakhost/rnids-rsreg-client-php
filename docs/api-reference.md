@@ -14,13 +14,18 @@ Client-oriented API documentation for the RNIDS/RSreg EPP library.
 
 - Domain, contact, and host `check()` methods return a **direct list of items**.
 - They do not wrap that list in an `items` key.
-- Contact create/update requests enforce runtime contact policy (`OBL-` ID normalization and fixed
-  `extension.identDescription` value).
+- Contact creation retains `OBL-` ID generation. Update/info/delete preserve existing registry IDs.
+- Contact extension values preserve caller input. An omitted or null optional update field is
+  unchanged; an empty string clears a supported optional text field.
+- Services retain their array API with explicit PHPDoc shapes and typed internal DTOs.
+- Domain transfer methods have explicit request/query/approve/cancel/reject names; legacy aliases remain.
 
 ## Live Integration Notes
 
-- Live contact-domain reassignment scenarios use `RNIDS_EPP_TEST_CONTACT_ID` when defined.
-- If undefined, test fallback handle is `OBL-test-kontakt`.
+- Offline tests exercise framing and session behavior against a local EPP peer.
+- Live lifecycle tests create and clean up their own objects. Poll acknowledgment requires
+  an explicitly configured message ID. Full setup is in [Contributing](../CONTRIBUTING.md).
+- Explicit live test runs return a failure when setup is unavailable or tests are skipped.
 
 ## Protocol Documentation
 

@@ -61,10 +61,10 @@ final class ContactInfoResponseParser
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:trDate',
             ),
-            XmlParser::firstNodeInt(
+            $this->parseDisclosureFlag(XmlParser::firstNodeValue(
                 $xpath,
                 '/epp:epp/epp:response/epp:resData/contact:infData/contact:disclose/@flag',
-            ),
+            )),
             XmlParser::firstNodeValue(
                 $xpath,
                 '/epp:epp/epp:response/epp:extension/contactExt:contact-ext/contactExt:ident',
@@ -225,6 +225,15 @@ final class ContactInfoResponseParser
         }
 
         return $values;
+    }
+
+    private function parseDisclosureFlag(?string $value): ?int
+    {
+        return match ($value) {
+            '1', 'true' => 1,
+            '0', 'false' => 0,
+            default => null,
+        };
     }
 
     private function parseBooleanNode(?string $value): bool

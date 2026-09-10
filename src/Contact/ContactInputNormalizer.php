@@ -7,9 +7,9 @@ namespace RNIDS\Contact;
 final class ContactInputNormalizer
 {
     /**
-     * @param array{ids?: mixed}|list<mixed>|non-empty-string $request
+     * @param array{ids: non-empty-list<non-empty-string>}|non-empty-list<non-empty-string>|non-empty-string $request
      *
-     * @return array{ids: list<string>|mixed}
+     * @return array{ids: list<string>}
      */
     public function normalizeCheckRequest(string|array $request): array
     {

@@ -4,6 +4,8 @@
   "license": "Apache-2.0",
   "require": {
     "php": ">=8.1",
+    "ext-dom": "*",
+    "ext-openssl": "*",
     "ext-json": "*"
   },
   "require-dev": {
@@ -40,7 +42,7 @@
     "phpcs": "vendor/bin/phpcs",
     "phpstan": "vendor/bin/phpstan analyse",
     "test:unit": "vendor/bin/phpunit --testsuite unit",
-    "test:live": "vendor/bin/phpunit --testsuite integration",
+    "test:live": "vendor/bin/phpunit --testsuite integration --fail-on-skipped",
     "test:coverage": [
       "mkdir -p build",
       "php -d pcov.enabled=1 vendor/bin/phpunit --testsuite unit --coverage-clover build/coverage.xml --coverage-text",

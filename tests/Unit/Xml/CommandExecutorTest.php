@@ -47,7 +47,7 @@ final class CommandExecutorTest extends TestCase
         $executor = new CommandExecutor($transport, null, $lastResponseMetadata);
 
         $executor->execute(
-            '<epp/>',
+            '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0"><command><logout/><clTRID>CL-1</clTRID></command></epp>',
             static fn(string $responseXml, \RNIDS\Xml\Response\ResponseMetadata $metadata): int =>
                 $metadata->resultCode,
         );

@@ -10,6 +10,8 @@ final class DomainInfoResponse
 {
     /**
      * @param list<string> $statuses
+     * @param list<string> $hosts
+     * @param list<DomainDsRecord> $dsRecords
      * @param list<DomainInfoNameserver> $nameservers
      */
     public function __construct(
@@ -36,6 +38,9 @@ final class DomainInfoResponse
         public readonly bool $notifyAdmin,
         public readonly bool $dnsSec,
         public readonly ?string $remark,
+        public readonly array $hosts = [],
+        public readonly ?\DateTimeImmutable $whoisPrivacyPaidUntil = null,
+        public readonly array $dsRecords = [],
     ) {
     }
 }

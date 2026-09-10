@@ -97,7 +97,7 @@ final class ContactService
     /**
      * Checks one or more contact identifiers for availability.
      *
-     * @param array{ids?: mixed}|list<mixed>|non-empty-string $request
+     * @param array{ids: non-empty-list<non-empty-string>}|non-empty-list<non-empty-string>|non-empty-string $request
      *
      * @return list<array{id: string, available: bool, reason: string|null}>
      *   Availability data for each requested contact identifier.
@@ -122,14 +122,32 @@ final class ContactService
      * Creates a new contact object.
      *
      * @param array{
-     *   id?: mixed,
-     *   postalInfo?: mixed,
-     *   voice?: mixed,
-     *   fax?: mixed,
-     *   email?: mixed,
-     *   authInfo?: mixed,
-     *   disclose?: mixed,
-     *   extension?: mixed
+     *   id?: string|null,
+     *   postalInfo: array{
+     *     type?: 'loc'|'int',
+     *     name: string,
+     *     organization?: non-empty-string|null,
+     *     address: array{
+     *       streets: non-empty-list<non-empty-string>,
+     *       city: non-empty-string,
+     *       countryCode: non-empty-string,
+     *       province?: non-empty-string|null,
+     *       postalCode?: non-empty-string|null
+     *     }
+     *   },
+     *   voice?: non-empty-string|null,
+     *   fax?: non-empty-string|null,
+     *   email: non-empty-string,
+     *   authInfo?: non-empty-string|null,
+     *   disclose?: 0|1|null,
+     *   extension?: array{
+     *     ident?: non-empty-string|null,
+     *     identDescription?: non-empty-string|null,
+     *     identExpiry?: non-empty-string|null,
+     *     identKind?: non-empty-string|null,
+     *     isLegalEntity?: non-empty-string|null,
+     *     vatNo?: non-empty-string|null
+     *   }|null
      * } $request Contact create payload containing required identity/address fields and optional extension data.
      *
      * @return array{id: string|null, createDate: \DateTimeImmutable|null} Contact creation result metadata.
@@ -159,6 +177,16 @@ final class ContactService
      *   id: string|null,
      *   roid: string|null,
      *   statuses: list<string>,
+     *   postalType: string|null,
+     *   postalName: string|null,
+     *   postalOrganization: string|null,
+     *   postalStreet1: string|null,
+     *   postalStreet2: string|null,
+     *   postalStreet3: string|null,
+     *   postalCity: string|null,
+     *   postalCountryCode: string|null,
+     *   postalProvince: string|null,
+     *   postalPostalCode: string|null,
      *   postalInfo: array{
      *     type: string,
      *     name: string,
@@ -209,16 +237,34 @@ final class ContactService
      * Updates an existing contact object.
      *
      * @param array{
-     *   id?: mixed,
-     *   addStatuses?: mixed,
-     *   removeStatuses?: mixed,
-     *   postalInfo?: mixed,
-     *   voice?: mixed,
-     *   fax?: mixed,
-     *   email?: mixed,
-     *   authInfo?: mixed,
-     *   disclose?: mixed,
-     *   extension?: mixed
+     *   id: non-empty-string,
+     *   addStatuses?: list<non-empty-string>|null,
+     *   removeStatuses?: list<non-empty-string>|null,
+     *   postalInfo?: array{
+     *     type?: 'loc'|'int',
+     *     name: string,
+     *     organization?: string|null,
+     *     address: array{
+     *       streets: non-empty-list<non-empty-string>,
+     *       city: non-empty-string,
+     *       countryCode: non-empty-string,
+     *       province?: string|null,
+     *       postalCode?: string|null
+     *     }
+     *   }|null,
+     *   voice?: string|null,
+     *   fax?: string|null,
+     *   email?: non-empty-string|null,
+     *   authInfo?: string|null,
+     *   disclose?: 0|1|null,
+     *   extension?: array{
+     *     ident?: string|null,
+     *     identDescription?: string|null,
+     *     identExpiry?: non-empty-string|null,
+     *     identKind?: non-empty-string|null,
+     *     isLegalEntity?: non-empty-string|null,
+     *     vatNo?: string|null
+     *   }|null
      * } $request Contact update payload describing add/remove/change operations.
      *
      * @return array{} Empty array on successful contact update command completion.

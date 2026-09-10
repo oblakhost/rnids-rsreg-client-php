@@ -96,6 +96,15 @@ final class DomainInfoResponseParser
                 $xpath,
                 '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:remark',
             ),
+            XmlParser::nodeValues(
+                $xpath,
+                '/epp:epp/epp:response/epp:resData/domain:infData/domain:host',
+            ),
+            XmlParser::firstNodeDateTime(
+                $xpath,
+                '/epp:epp/epp:response/epp:extension/domainExt:domain-ext/domainExt:whoisPrivacyPaidUntil',
+            ),
+            (new DomainDnssecResponseParser())->parse($xpath),
         );
     }
 

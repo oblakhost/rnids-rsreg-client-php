@@ -6,6 +6,7 @@ namespace RNIDS\Xml;
 
 final class NamespaceRegistry
 {
+    public const SECDNS = 'urn:ietf:params:xml:ns:secDNS-1.1';
     public const EPP = 'urn:ietf:params:xml:ns:epp-1.0';
     public const DOMAIN = 'urn:ietf:params:xml:ns:domain-1.0';
     public const CONTACT = 'urn:ietf:params:xml:ns:contact-1.0';
@@ -27,6 +28,7 @@ final class NamespaceRegistry
             'epp' => self::EPP,
             'host' => self::HOST,
             'rnids' => self::RNIDS,
+            'secDNS' => self::SECDNS,
         ];
     }
 

@@ -13,10 +13,10 @@ use RNIDS\Xml\XmlComposer;
  */
 final class DomainExtensionXmlBuilder
 {
-    public function build(?DomainExtension $extension): string
+    public function build(?DomainExtension $extension, string $additionalXml = ''): string
     {
         if (null === $extension) {
-            return '';
+            return $this->envelope($additionalXml);
         }
 
         $parts = \array_values(\array_filter([
@@ -28,14 +28,20 @@ final class DomainExtensionXmlBuilder
         ]));
 
         if ([] === $parts) {
-            return '';
+            return $this->envelope($additionalXml);
         }
 
-        return '<extension>'
-            . '<domainExt:domain-ext xmlns:domainExt="' . NamespaceRegistry::RNIDS_DOMAIN_EXT . '">'
-            . \implode('', $parts)
-            . '</domainExt:domain-ext>'
-            . '</extension>';
+        return $this->envelope(
+            '<domainExt:domain-ext xmlns:domainExt="' . NamespaceRegistry::RNIDS_DOMAIN_EXT . '">'
+                . \implode('', $parts)
+                . '</domainExt:domain-ext>'
+                . $additionalXml,
+        );
+    }
+
+    private function envelope(string $xml): string
+    {
+        return '' === $xml ? '' : '<extension>' . $xml . '</extension>';
     }
 
     private function remarkXml(?string $remark): ?string

@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace RNIDS\Xml\Domain;
 
-use RNIDS\Domain\Dto\DomainNameserverAddress;
 use RNIDS\Domain\Dto\DomainRegisterContact;
-use RNIDS\Domain\Dto\DomainRegisterNameserver;
 use RNIDS\Domain\Dto\DomainRegisterRequest;
 use RNIDS\Xml\NamespaceRegistry;
 use RNIDS\Xml\XmlComposer;
@@ -32,7 +30,7 @@ final class DomainRegisterRequestBuilder
             . '<domain:create xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
             . XmlComposer::element('domain:name', $request->name)
             . $this->periodXml($request)
-            . $this->nameserversXml($request)
+            . (new DomainNameserverXmlBuilder())->build($request->nameservers)
             . XmlComposer::element('domain:registrant', $request->registrant)
             . $this->contactsXml($request)
             . $this->authInfoXml($request)
@@ -52,45 +50,6 @@ final class DomainRegisterRequestBuilder
         return '<domain:period unit="' . XmlComposer::escape($request->periodUnit) . '">'
             . (string) $request->period
             . '</domain:period>';
-    }
-
-    private function nameserversXml(DomainRegisterRequest $request): string
-    {
-        if ([] === $request->nameservers) {
-            return '';
-        }
-
-        return '<domain:ns>'
-            . \implode(
-                '',
-                \array_map(
-                    fn(DomainRegisterNameserver $nameserver): string => $this->nameserverXml($nameserver),
-                    $request->nameservers,
-                ),
-            )
-            . '</domain:ns>';
-    }
-
-    private function nameserverXml(DomainRegisterNameserver $nameserver): string
-    {
-        if ([] === $nameserver->addresses) {
-            return XmlComposer::element('domain:hostObj', $nameserver->name);
-        }
-
-        return '<domain:hostAttr>'
-            . XmlComposer::element('domain:hostName', $nameserver->name)
-            . \implode(
-                '',
-                \array_map(
-                    static fn(DomainNameserverAddress $address): string => '<domain:hostAddr ip="'
-                        . XmlComposer::escape($address->ipVersion)
-                        . '">'
-                        . XmlComposer::escape($address->address)
-                        . '</domain:hostAddr>',
-                    $nameserver->addresses,
-                ),
-            )
-            . '</domain:hostAttr>';
     }
 
     private function contactsXml(DomainRegisterRequest $request): string
@@ -121,6 +80,9 @@ final class DomainRegisterRequestBuilder
 
     private function extensionXml(DomainRegisterRequest $request): string
     {
-        return $this->extensionXmlBuilder->build($request->extension);
+        return $this->extensionXmlBuilder->build(
+            $request->extension,
+            (new DomainDnssecXmlBuilder())->create($request->dnssec),
+        );
     }
 }

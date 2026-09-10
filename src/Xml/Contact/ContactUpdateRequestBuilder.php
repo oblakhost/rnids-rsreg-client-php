@@ -64,7 +64,10 @@ final class ContactUpdateRequestBuilder
             . $this->optionalElement('contact:fax', $request->fax)
             . $this->optionalElement('contact:email', $request->email)
             . $this->authInfoXml($request->authInfo)
-            . $this->discloseXml($request->disclose)
+            . $this->discloseXml(
+                $request->disclose,
+                $request->postalInfo?->type ?? ContactPostalInfo::TYPE_LOC,
+            )
             . '</contact:chg>';
     }
 
@@ -102,14 +105,17 @@ final class ContactUpdateRequestBuilder
         return '<contact:authInfo>' . XmlComposer::element('contact:pw', $authInfo) . '</contact:authInfo>';
     }
 
-    private function discloseXml(?int $disclose): string
+    private function discloseXml(?int $disclose, string $postalType): string
     {
         if (null === $disclose) {
             return '';
         }
 
         return '<contact:disclose flag="' . (string) $disclose . '">'
-            . '<contact:name/><contact:org/><contact:addr/><contact:voice/><contact:email/>'
+            . '<contact:name type="' . XmlComposer::escape($postalType) . '"/>'
+            . '<contact:org type="' . XmlComposer::escape($postalType) . '"/>'
+            . '<contact:addr type="' . XmlComposer::escape($postalType) . '"/>'
+            . '<contact:voice/><contact:email/>'
             . '</contact:disclose>';
     }
 

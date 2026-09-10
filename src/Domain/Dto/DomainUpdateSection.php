@@ -12,10 +12,12 @@ final class DomainUpdateSection
     /**
      * @param list<DomainRegisterContact> $contacts
      * @param list<string> $statuses
+     * @param list<DomainRegisterNameserver> $nameservers
      */
     public function __construct(
         public readonly array $contacts = [],
         public readonly array $statuses = [],
+        public readonly array $nameservers = [],
     ) {
     }
 }

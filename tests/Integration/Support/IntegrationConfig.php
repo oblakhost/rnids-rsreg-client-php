@@ -13,7 +13,7 @@ final class IntegrationConfig
     private const DEFAULT_PORT = 700;
     private const DEFAULT_CONNECTIVITY_TIMEOUT_SECONDS = 2.0;
 
-    private const DEFAULT_CERT_PASSWORD = '12345';
+    private const DEFAULT_CERT_PASSWORD = '';
 
     private const DEFAULT_TEST_DOMAIN = 'komodarstvo.rs';
 
@@ -28,7 +28,6 @@ final class IntegrationConfig
     ];
 
     private const DEFAULT_CLIENT_CERT_CANDIDATES = [
-        'tests/fixtures/dummy-client-cert.pem',
         'tests/fixtures/oblak.pem',
         'tests/fixtures/client.pem',
         'tests/Fixtures/client.pem',
@@ -67,12 +66,12 @@ final class IntegrationConfig
             'password' => self::requiredEnv('RNIDS_EPP_PASSWORD'),
             'port' => self::port(),
             'tls' => [
-                'allowSelfSigned' => true,
+                'allowSelfSigned' => false,
                 'caFilePath' => self::caCertificatePath(),
                 'clientCertificatePassword' => self::clientCertificatePassword(),
                 'clientCertificatePath' => self::clientCertificatePath(),
-                'verifyPeer' => false,
-                'verifyPeerName' => false,
+                'verifyPeer' => true,
+                'verifyPeerName' => true,
             ],
             'username' => self::requiredEnv('RNIDS_EPP_USERNAME'),
         ];
@@ -96,7 +95,8 @@ final class IntegrationConfig
         self::port();
     }
 
-    public static function liveReadinessFailureReason(): ?string
+    /** @param callable(string, int, float): bool|null $probe */
+    public static function liveReadinessFailureReason(?callable $probe = null): ?string
     {
         $issues = [];
         $host = self::host();
@@ -116,25 +116,32 @@ final class IntegrationConfig
             $issues[] = $runtimeException->getMessage();
         }
 
-        if (!self::pathIsReadableFile(self::clientCertificatePath())) {
-            $issues[] = \sprintf('client certificate not readable at "%s"', self::clientCertificatePath());
+        $clientIssue = CertificateReadiness::failureReason(
+            self::clientCertificatePath(),
+            self::clientCertificatePassword(),
+            true,
+        );
+        $caIssue = CertificateReadiness::failureReason(self::caCertificatePath(), '', false);
+        if (null !== $clientIssue) {
+            $issues[] = 'client ' . $clientIssue;
+        }
+        if (null !== $caIssue) {
+            $issues[] = 'CA ' . $caIssue;
         }
 
-        if (!self::pathIsReadableFile(self::caCertificatePath())) {
-            $issues[] = \sprintf('CA certificate not readable at "%s"', self::caCertificatePath());
-        }
-
-        if (!self::isHostResolvable($host)) {
-            $issues[] = \sprintf('host "%s" cannot be resolved', $host);
-        } elseif (!self::isTcpEndpointReachable($host, $port, self::DEFAULT_CONNECTIVITY_TIMEOUT_SECONDS)) {
-            $issues[] = \sprintf('cannot reach %s:%d over TCP', $host, $port);
+        // Never perform network I/O when local prerequisites already prevent a live run.
+        if ([] === $issues) {
+            $probe ??= self::isTcpEndpointReachable(...);
+            if (!$probe($host, $port, self::DEFAULT_CONNECTIVITY_TIMEOUT_SECONDS)) {
+                $issues[] = \sprintf('cannot reach %s:%d over TCP', $host, $port);
+            }
         }
 
         if ([] === $issues) {
             return null;
         }
 
-        return 'Skipping RNIDS live integration tests: ' . \implode('; ', $issues) . '.';
+        return 'RNIDS live integration prerequisites unavailable: ' . \implode('; ', $issues) . '.';
     }
 
     public static function ensureRegisterReadyOrFail(): void
@@ -272,7 +279,7 @@ final class IntegrationConfig
     {
         $password = \getenv('RNIDS_EPP_CLIENT_CERT_PASSWORD');
 
-        if (!\is_string($password) || '' === \trim($password)) {
+        if (!\is_string($password)) {
             return self::DEFAULT_CERT_PASSWORD;
         }
 
@@ -379,17 +386,6 @@ final class IntegrationConfig
         }
     }
 
-    private static function ensureFileOrFail(string $path, string $label): void
-    {
-        if (\is_file($path) && \is_readable($path)) {
-            return;
-        }
-
-        throw new \RuntimeException(
-            \sprintf('Missing readable %s file at "%s" for RNIDS live integration tests.', $label, $path),
-        );
-    }
-
     private static function requiredEnv(string $name): string
     {
         $value = \getenv($name);
@@ -431,24 +427,6 @@ final class IntegrationConfig
         }
 
         return $parsedPort;
-    }
-
-    private static function pathIsReadableFile(string $path): bool
-    {
-        return \is_file($path) && \is_readable($path);
-    }
-
-    private static function isHostResolvable(string $host): bool
-    {
-        if ('' === \trim($host)) {
-            return false;
-        }
-
-        if (false !== \filter_var($host, \FILTER_VALIDATE_IP)) {
-            return true;
-        }
-
-        return \gethostbyname($host) !== $host;
     }
 
     private static function isTcpEndpointReachable(string $host, int $port, float $timeoutSeconds): bool

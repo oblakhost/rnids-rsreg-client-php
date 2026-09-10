@@ -237,6 +237,8 @@ final class HostServiceTest extends TestCase
 
             public function readFrame(): string
             {
+                \preg_match('~<clTRID>([^<]+)</clTRID>~', $this->writtenPayload, $matches);
+
                 return '<?xml version="1.0" encoding="UTF-8"?>'
                     . '<epp xmlns="urn:ietf:params:xml:ns:epp-1.0">'
                     . '<response>'
@@ -245,7 +247,7 @@ final class HostServiceTest extends TestCase
                     . '<host:name>ns1.example.rs</host:name>'
                     . '<host:crDate>2026-02-01T00:00:00.0Z</host:crDate>'
                     . '</host:creData></resData>'
-                    . '<trID><clTRID>HOST-00000003</clTRID><svTRID>SV-3</svTRID></trID>'
+                    . '<trID><clTRID>' . ($matches[1] ?? '') . '</clTRID><svTRID>SV-3</svTRID></trID>'
                     . '</response>'
                     . '</epp>';
             }

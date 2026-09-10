@@ -8,6 +8,10 @@
 
 Sends EPP hello and returns server capabilities.
 
+Client initialization consumes the unsolicited greeting separately, before sending login.
+`hello()` sends a new hello request on the current session. `receiveGreeting()` is the
+low-level operation for reading the initial greeting without writing a command.
+
 Response shape:
 
 ```php
@@ -42,6 +46,9 @@ array{
 
 Ends session explicitly.
 
+The transport is disconnected and the client's authenticated state is cleared. Call
+`$client->init()` to reconnect; `close()` after an explicit logout is harmless.
+
 ### `poll(array $request = []): array`
 
 Reads or acknowledges queue messages.
@@ -49,12 +56,12 @@ Reads or acknowledges queue messages.
 Request shape:
 
 ```php
-array{messageId?: mixed, operation?: mixed}
+array{messageId?: non-empty-string, operation?: 'req'|'ack'}
 ```
 
 `operation` supports:
 
-- `request` (default) — fetch next queued message
+- `req` (default) — fetch next queued message
 - `ack` — acknowledge a specific message id (`messageId` is required)
 
 Response shape:

@@ -26,6 +26,7 @@ final class DomainRegisterRequest
         public readonly array $contacts,
         public readonly ?string $authInfo,
         public readonly ?DomainExtension $extension,
+        public readonly ?DomainDnssecCreate $dnssec = null,
     ) {
     }
 }

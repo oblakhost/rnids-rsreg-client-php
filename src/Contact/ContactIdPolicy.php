@@ -37,7 +37,7 @@ final class ContactIdPolicy
             );
         }
 
-        return $this->ensurePrefix(\trim($id));
+        return $id;
     }
 
     private function generateId(): string

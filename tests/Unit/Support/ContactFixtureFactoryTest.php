@@ -38,6 +38,21 @@ final class ContactFixtureFactoryTest extends TestCase
         self::assertNotSame('', $payload['extension']['identExpiry']);
     }
 
+    public function testIdentificationExpiryUsesAnXmlDateTimeForBothProfiles(): void
+    {
+        $factory = ContactFixtureFactory::forSeed('seed-13');
+
+        foreach ([ $factory->individualCreatePayload(), $factory->companyCreatePayload() ] as $payload) {
+            $expiry = \DateTimeImmutable::createFromFormat(
+                '!Y-m-d\\TH:i:s\\Z',
+                $payload['extension']['identExpiry'],
+            );
+
+            self::assertInstanceOf(\DateTimeImmutable::class, $expiry);
+            self::assertSame($payload['extension']['identExpiry'], $expiry->format('Y-m-d\\TH:i:s\\Z'));
+        }
+    }
+
     public function testRunTokenProducesDistinctStableIds(): void
     {
         $base = ContactFixtureFactory::forSeed('seed-13');

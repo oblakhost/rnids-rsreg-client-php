@@ -21,6 +21,7 @@ final class DomainUpdateRequest
         public readonly ?string $registrant = null,
         public readonly ?string $authInfo = null,
         public readonly ?DomainExtension $extension = null,
+        public readonly ?DomainDnssecUpdate $dnssec = null,
     ) {
     }
 }

@@ -6,7 +6,7 @@ namespace Tests\Support;
 
 final class ContactFixtureFactory
 {
-    private const DEFAULT_IDENT_EXPIRY = '2099-12-31';
+    private const DEFAULT_IDENT_EXPIRY = '2099-12-31T00:00:00Z';
 
     public static function forSeed(string $seed): self
     {
