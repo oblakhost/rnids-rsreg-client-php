@@ -61,7 +61,7 @@ final class ContactCheckResponseParser
 
         return new ContactCheckItem(
             $id,
-            '1' === $idNode->getAttribute('avail'),
+            XmlParser::requiredBooleanAttribute($idNode, 'avail'),
             $this->parseReason($xpath, $node),
         );
     }

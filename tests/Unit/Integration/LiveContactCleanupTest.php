@@ -35,6 +35,13 @@ final class LiveContactCleanupTest extends TestCase
                 $this->requests[] = $payload;
                 \preg_match('~<clTRID>([^<]+)</clTRID>~', $payload, $matches);
                 $this->response = SessionPeerTransport::response(1000, $matches[1]);
+                if (\str_contains($payload, '<check>')) {
+                    \preg_match('~<contact:id>([^<]+)</contact:id>~', $payload, $contactId);
+                    $data = '<resData><contact:chkData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0">'
+                        . '<contact:cd><contact:id avail="true">' . $contactId[1]
+                        . '</contact:id></contact:cd></contact:chkData></resData>';
+                    $this->response = \str_replace('</result>', '</result>' . $data, $this->response);
+                }
             }
 
             public function readFrame(): string
@@ -58,9 +65,9 @@ final class LiveContactCleanupTest extends TestCase
                 $scenario->testContactLifecycleCreateUpdateInfoDeleteFlow();
                 self::fail('A response without a contact ID must fail the live scenario.');
             } catch (\PHPUnit\Framework\ExpectationFailedException) {
-                self::assertCount(3, $peer->requests);
-                \preg_match('~<contact:id>([^<]+)</contact:id>~', $peer->requests[1], $createId);
-                \preg_match('~<contact:id>([^<]+)</contact:id>~', $peer->requests[2], $deleteId);
+                self::assertCount(4, $peer->requests);
+                \preg_match('~<contact:id>([^<]+)</contact:id>~', $peer->requests[2], $createId);
+                \preg_match('~<contact:id>([^<]+)</contact:id>~', $peer->requests[3], $deleteId);
                 self::assertSame($createId[1], $deleteId[1]);
             }
         } finally {

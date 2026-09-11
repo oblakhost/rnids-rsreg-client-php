@@ -59,7 +59,7 @@ final class HostCheckResponseParser
 
         return new HostCheckItem(
             $name,
-            '1' === $nameNode->getAttribute('avail'),
+            XmlParser::requiredBooleanAttribute($nameNode, 'avail'),
             $reason,
         );
     }

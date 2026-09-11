@@ -71,7 +71,7 @@ final class DomainCheckResponseParser
 
         return new DomainCheckItem(
             $name,
-            '1' === $nameNode->getAttribute('avail'),
+            XmlParser::requiredBooleanAttribute($nameNode, 'avail'),
             $this->queryReason($xpath, $cdNode),
         );
     }

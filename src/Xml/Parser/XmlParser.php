@@ -71,6 +71,18 @@ final class XmlParser
         return \trim((string) \preg_replace('/\s+/', ' ', \trim($message)));
     }
 
+    /** Parses a required XML Schema boolean attribute without guessing unavailable states. */
+    public static function requiredBooleanAttribute(\DOMElement $element, string $attribute): bool
+    {
+        return match (\trim($element->getAttribute($attribute))) {
+            '1', 'true' => true,
+            '0', 'false' => false,
+            default => throw new \RNIDS\Exception\MalformedResponseException(
+                \sprintf('EPP response attribute "%s" must be an XML boolean.', $attribute),
+            ),
+        };
+    }
+
     /**
      * Returns the first node text content for an XPath query or null when absent.
      */

@@ -77,6 +77,7 @@ final class RnidsLiveIntegrationTest extends TestCase
             $originalContact = $this->createContact($cleanup, $pendingDeletion);
             $replacementContact = $this->createContact($cleanup, $pendingDeletion);
             $domain = IntegrationConfig::uniqueRegisterDomainName();
+            self::assertTrue($client->domain()->check($domain)[0]['available']);
             $request = IntegrationConfig::domainRegisterRequest($domain);
             $request['registrant'] = $originalContact;
             $request['contacts'] = [
@@ -126,6 +127,7 @@ final class RnidsLiveIntegrationTest extends TestCase
         $payload = IntegrationConfig::contactFixtures()->withRunToken(\bin2hex(\random_bytes(4)))
             ->individualCreatePayload();
         $payload['id'] = 'OBL-' . $payload['id'];
+        self::assertTrue($client->contact()->check($payload['id'])[0]['available']);
         $result = $client->contact()->create($payload);
         $id = $result['id'] ?? $payload['id'];
         $cleanup->add('contact ' . $id, static function () use ($client, $id, &$pendingDeletion): ?string {
@@ -154,6 +156,7 @@ final class RnidsLiveIntegrationTest extends TestCase
         $host = 'ns1.' . $domain;
         $createdHost = null;
         try {
+            self::assertTrue(self::client()->host()->check($host)[0]['available']);
             $result = self::client()->host()->create($host, $address);
             $createdHost = $host;
             self::assertSame(1000, self::client()->responseMeta()['resultCode']);
@@ -171,6 +174,7 @@ final class RnidsLiveIntegrationTest extends TestCase
                 $cleanup->add('host ' . $createdHost, static function () use ($createdHost): void {
                     self::client()->host()->delete($createdHost);
                     self::assertSame(1000, self::client()->responseMeta()['resultCode']);
+                    self::assertTrue(self::client()->host()->check($createdHost)[0]['available']);
                 });
                 $cleanup->run();
             }

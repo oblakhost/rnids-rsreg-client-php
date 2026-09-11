@@ -47,6 +47,7 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
         $createdContactId = null;
 
         try {
+            self::assertTrue($this->client()->contact()->check($createPayload['id'])[0]['available']);
             $createResult = $this->client()->contact()->create($createPayload);
             $createMeta = $this->client()->responseMeta();
 
@@ -69,6 +70,7 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
 
             $this->client()->contact()->delete($createdContactId);
             self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
+            self::assertTrue($this->client()->contact()->check($createdContactId)[0]['available']);
             $createdContactId = null;
         } finally {
             if (null !== $createdContactId) {
