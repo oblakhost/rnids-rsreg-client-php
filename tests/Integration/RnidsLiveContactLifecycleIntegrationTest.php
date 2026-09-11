@@ -7,6 +7,7 @@ namespace Tests\Integration;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Client;
+use RNIDS\Exception\ObjectMissing;
 use Tests\Integration\Support\IntegrationConfig;
 
 #[Group('integration')]
@@ -70,8 +71,15 @@ final class RnidsLiveContactLifecycleIntegrationTest extends TestCase
 
             $this->client()->contact()->delete($createdContactId);
             self::assertSame(1000, $this->client()->responseMeta()['resultCode']);
-            self::assertTrue($this->client()->contact()->check($createdContactId)[0]['available']);
-            $createdContactId = null;
+            // RNIDS reserves deleted contact IDs; absence does not imply ID reuse.
+            $deletedContactId = $createdContactId;
+            try {
+                $this->client()->contact()->info($deletedContactId);
+                self::fail('Deleted contact is still present in the registry.');
+            } catch (ObjectMissing $exception) {
+                self::assertSame(2303, $exception->resultCode());
+                $createdContactId = null;
+            }
         } finally {
             if (null !== $createdContactId) {
                 try {
