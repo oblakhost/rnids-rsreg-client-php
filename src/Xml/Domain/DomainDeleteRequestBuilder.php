@@ -20,7 +20,7 @@ final class DomainDeleteRequestBuilder
     {
         $xml = '<delete>'
             . '<domain:delete xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . XmlComposer::element('domain:name', $request->name)
+            . XmlComposer::dnsNameElement('domain:name', $request->name)
             . '</domain:delete>'
             . '</delete>';
 

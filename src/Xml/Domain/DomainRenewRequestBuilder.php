@@ -20,7 +20,7 @@ final class DomainRenewRequestBuilder
     {
         $xml = '<renew>'
             . '<domain:renew xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . XmlComposer::element('domain:name', $request->name)
+            . XmlComposer::dnsNameElement('domain:name', $request->name)
             . XmlComposer::element('domain:curExpDate', $request->currentExpirationDate)
             . $this->periodXml($request)
             . '</domain:renew>'

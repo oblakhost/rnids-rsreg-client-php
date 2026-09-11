@@ -83,6 +83,7 @@ final class Client
             null,
             $this->lastResponseMetadata,
             $this->sessionState,
+            $this->clientConfig->requireClientTransactionId,
         );
         $tridGenerator = new IncrementalClTridGenerator('RNIDS-' . \bin2hex(\random_bytes(8)));
         $this->sessionService = new SessionService(
@@ -136,7 +137,7 @@ final class Client
     }
 
     /**
-     * Connects, consumes the server greeting, and waits for the login response.
+     * Connects, obtains the configured server greeting, and waits for the login response.
      */
     public function init(): void
     {
@@ -149,7 +150,9 @@ final class Client
         try {
             $this->transport->connect();
             $this->sessionState->connect();
-            $greeting = $this->sessionService->receiveGreeting();
+            $greeting = 'hello' === $this->clientConfig->greetingMode
+                ? $this->sessionService->hello()
+                : $this->sessionService->receiveGreeting();
             $extensionUris = $this->clientConfig->extensionUris;
 
             $supportsDnssec = \in_array(NamespaceRegistry::SECDNS, $greeting['extensionUris'], true);

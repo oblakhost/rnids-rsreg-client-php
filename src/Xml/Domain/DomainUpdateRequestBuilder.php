@@ -29,7 +29,7 @@ final class DomainUpdateRequestBuilder
     {
         $xml = '<update>'
             . '<domain:update xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . XmlComposer::element('domain:name', $request->name)
+            . XmlComposer::dnsNameElement('domain:name', $request->name)
             . $this->sectionXml('domain:add', $request->add)
             . $this->sectionXml('domain:rem', $request->remove)
             . $this->changeXml($request)

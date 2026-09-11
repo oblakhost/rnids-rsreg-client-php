@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RNIDS\Xml\Domain;
 
 use RNIDS\Domain\Dto\DomainInfoRequest;
+use RNIDS\Xml\DnsNameEncoder;
 use RNIDS\Xml\NamespaceRegistry;
 use RNIDS\Xml\XmlComposer;
 
@@ -23,7 +24,7 @@ final class DomainInfoRequestBuilder
         $xml = '<info>'
             . '<domain:info xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
             . '<domain:name' . $hostsAttribute . '>'
-            . XmlComposer::escape($request->name)
+            . XmlComposer::escape(DnsNameEncoder::toAscii($request->name))
             . '</domain:name>'
             . '</domain:info>'
             . '</info>';

@@ -46,6 +46,8 @@ final class IntegrationConfig
     /**
      * @return array{
      *   host: string,
+     *   greetingMode: 'hello',
+     *   requireClientTransactionId: false,
      *   port: int,
      *   username: string,
      *   password: string,
@@ -62,6 +64,8 @@ final class IntegrationConfig
     public static function clientConfig(): array
     {
         return [
+            'greetingMode' => 'hello',
+            'requireClientTransactionId' => false,
             'host' => self::host(),
             'password' => self::requiredEnv('RNIDS_EPP_PASSWORD'),
             'port' => self::port(),

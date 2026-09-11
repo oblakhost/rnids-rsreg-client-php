@@ -71,4 +71,14 @@ final class ClientConfigFactoryTest extends TestCase
         self::assertFalse($config->tlsConfig->verifyPeer);
         self::assertTrue($config->tlsConfig->verifyPeerName);
     }
+
+    public function testRejectsUnknownGreetingModeBeforeConnecting(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Client greetingMode must be "unsolicited" or "hello".');
+        ClientConfigFactory::fromArray([
+            'host' => 'epp.example.rs', 'username' => 'client-id', 'password' => 'secret',
+            'greetingMode' => 'invalid',
+        ]);
+    }
 }

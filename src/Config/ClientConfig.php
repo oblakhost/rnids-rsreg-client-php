@@ -29,7 +29,13 @@ final class ClientConfig
         array $extensionUris,
         public readonly ?TlsConfig $tlsConfig,
         public readonly bool $allowPlaintext = false,
+        public readonly string $greetingMode = 'unsolicited',
+        public readonly bool $requireClientTransactionId = true,
     ) {
+        if (!\in_array($greetingMode, [ 'unsolicited', 'hello' ], true)) {
+            throw new \InvalidArgumentException('Client greetingMode must be "unsolicited" or "hello".');
+        }
+
         $this->objectUris = $objectUris;
         $this->extensionUris = $extensionUris;
     }

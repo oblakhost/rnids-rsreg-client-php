@@ -7,6 +7,8 @@ namespace Tests\Integration;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Client;
+use RNIDS\Exception\ObjectAssociationConflict;
+use RNIDS\Exception\ObjectMissing;
 use Tests\Integration\Support\IntegrationConfig;
 use Tests\Integration\Support\LiveCleanup;
 
@@ -70,9 +72,10 @@ final class RnidsLiveIntegrationTest extends TestCase
         self::assertNotFalse(\filter_var($address, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4));
         $client = self::client();
         $cleanup = new LiveCleanup();
+        $pendingDeletion = false;
         try {
-            $originalContact = $this->createContact($cleanup);
-            $replacementContact = $this->createContact($cleanup);
+            $originalContact = $this->createContact($cleanup, $pendingDeletion);
+            $replacementContact = $this->createContact($cleanup, $pendingDeletion);
             $domain = IntegrationConfig::uniqueRegisterDomainName();
             $request = IntegrationConfig::domainRegisterRequest($domain);
             $request['registrant'] = $originalContact;
@@ -81,9 +84,17 @@ final class RnidsLiveIntegrationTest extends TestCase
                 ['handle' => $originalContact, 'type' => 'tech'],
             ];
             $result = $client->domain()->register($request);
-            $cleanup->add('domain ' . $domain, static function () use ($client, $domain): void {
+            $cleanup->add('domain ' . $domain, static function () use ($client, $domain, &$pendingDeletion): ?string {
                 $client->domain()->delete($domain);
                 self::assertSame(1000, $client->responseMeta()['resultCode']);
+                try {
+                    $info = $client->domain()->info($domain);
+                } catch (ObjectMissing) {
+                    return null;
+                }
+                self::assertContains('pendingDelete', $info['statuses']);
+                $pendingDeletion = true;
+                return 'pending';
             });
             self::assertSame(1000, $client->responseMeta()['resultCode']);
             self::assertSame($domain, $result['name']);
@@ -109,7 +120,7 @@ final class RnidsLiveIntegrationTest extends TestCase
         }
     }
 
-    private function createContact(LiveCleanup $cleanup): string
+    private function createContact(LiveCleanup $cleanup, bool &$pendingDeletion): string
     {
         $client = self::client();
         $payload = IntegrationConfig::contactFixtures()->withRunToken(\bin2hex(\random_bytes(4)))
@@ -117,9 +128,18 @@ final class RnidsLiveIntegrationTest extends TestCase
         $payload['id'] = 'OBL-' . $payload['id'];
         $result = $client->contact()->create($payload);
         $id = $result['id'] ?? $payload['id'];
-        $cleanup->add('contact ' . $id, static function () use ($client, $id): void {
-            $client->contact()->delete($id);
+        $cleanup->add('contact ' . $id, static function () use ($client, $id, &$pendingDeletion): ?string {
+            try {
+                $client->contact()->delete($id);
+            } catch (ObjectAssociationConflict $exception) {
+                if (!$pendingDeletion) {
+                    throw $exception;
+                }
+                self::assertContains('linked', $client->contact()->info($id)['statuses']);
+                return 'pending';
+            }
             self::assertSame(1000, $client->responseMeta()['resultCode']);
+            return null;
         });
         self::assertSame(1000, $client->responseMeta()['resultCode']);
         self::assertSame($payload['id'], $result['id']);

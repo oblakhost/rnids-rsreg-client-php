@@ -22,6 +22,7 @@ final class CommandExecutor
         ?ResponseMetadataParser $responseMetadataParser = null,
         private readonly ?LastResponseMetadata $lastResponseMetadata = null,
         private readonly ?SessionState $sessionState = null,
+        private readonly bool $requireClientTransactionId = true,
     ) {
         $this->responseMetadataParser = $responseMetadataParser ?? new ResponseMetadataParser();
     }
@@ -112,14 +113,35 @@ final class CommandExecutor
             return;
         }
 
-        if ($metadata->clientTransactionId !== $request['transactionId']) {
-            throw new \RNIDS\Exception\MalformedResponseException(
-                'EPP response client transaction ID does not match the command.',
-            );
-        }
+        $this->assertCommandResponse($xml);
+        $this->validateTransactionId($metadata->clientTransactionId, $request['transactionId']);
 
         if ('login' === $request['operation'] && $metadata->isSuccess() && 1000 !== $metadata->resultCode) {
             throw new \RNIDS\Exception\MalformedResponseException('Unexpected result code for EPP login.');
+        }
+    }
+
+    private function assertCommandResponse(string $xml): void
+    {
+        $xpath = XmlParser::createXPath($xml);
+        $results = $xpath->query('/epp:epp/epp:response/epp:result');
+        if (false === $results || 0 === $results->length) {
+            throw new \RNIDS\Exception\MalformedResponseException(
+                'EPP command requires a result response, not a greeting.',
+            );
+        }
+    }
+
+    private function validateTransactionId(?string $actual, ?string $expected): void
+    {
+        if (null === $actual && !$this->requireClientTransactionId) {
+            return;
+        }
+
+        if ($actual !== $expected) {
+            throw new \RNIDS\Exception\MalformedResponseException(
+                'EPP response client transaction ID does not match the command.',
+            );
         }
     }
 

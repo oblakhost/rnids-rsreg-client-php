@@ -20,7 +20,7 @@ final class HostDeleteRequestBuilder
     {
         $xml = '<delete>'
             . '<host:delete xmlns:host="' . NamespaceRegistry::HOST . '">'
-            . XmlComposer::element('host:name', $request->name)
+            . XmlComposer::dnsNameElement('host:name', $request->name)
             . '</host:delete>'
             . '</delete>';
 

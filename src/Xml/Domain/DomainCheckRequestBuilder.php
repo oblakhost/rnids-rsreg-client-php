@@ -21,7 +21,7 @@ final class DomainCheckRequestBuilder
         $namesXml = \implode(
             '',
             \array_map(
-                static fn(string $name): string => XmlComposer::element('domain:name', $name),
+                static fn(string $name): string => XmlComposer::dnsNameElement('domain:name', $name),
                 $request->names,
             ),
         );

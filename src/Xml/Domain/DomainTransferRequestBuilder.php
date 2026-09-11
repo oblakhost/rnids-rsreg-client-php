@@ -20,7 +20,7 @@ final class DomainTransferRequestBuilder
     {
         $xml = '<transfer op="' . XmlComposer::escape($request->operation) . '">'
             . '<domain:transfer xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . XmlComposer::element('domain:name', $request->name)
+            . XmlComposer::dnsNameElement('domain:name', $request->name)
             . $this->periodXml($request)
             . $this->authInfoXml($request)
             . '</domain:transfer>'

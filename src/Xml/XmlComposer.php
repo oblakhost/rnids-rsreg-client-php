@@ -38,4 +38,10 @@ final class XmlComposer
     {
         return '<' . $name . '>' . self::escape($value) . '</' . $name . '>';
     }
+
+    /** Builds a DNS name element using its EPP ASCII representation. */
+    public static function dnsNameElement(string $name, string $value): string
+    {
+        return self::element($name, DnsNameEncoder::toAscii($value));
+    }
 }

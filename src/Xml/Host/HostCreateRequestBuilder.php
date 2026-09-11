@@ -21,7 +21,7 @@ final class HostCreateRequestBuilder
     {
         $xml = '<create>'
             . '<host:create xmlns:host="' . NamespaceRegistry::HOST . '">'
-            . XmlComposer::element('host:name', $request->name)
+            . XmlComposer::dnsNameElement('host:name', $request->name)
             . $this->addressesXml($request)
             . '</host:create>'
             . '</create>';

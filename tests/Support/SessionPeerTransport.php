@@ -16,6 +16,7 @@ final class SessionPeerTransport implements Transport
     private array $responses = [];
 
     public bool $connected = false;
+    public bool $omitTransactionIds = false;
     public bool $failRead = false;
     public bool $failConnect = false;
     public bool $failDisconnect = false;
@@ -39,7 +40,7 @@ final class SessionPeerTransport implements Transport
             . '</response></epp>';
     }
 
-    public function __construct(public int $loginCode = 1000)
+    public function __construct(public int $loginCode = 1000, public bool $unsolicitedGreeting = true)
     {
     }
 
@@ -50,7 +51,7 @@ final class SessionPeerTransport implements Transport
         }
 
         $this->connected = true;
-        $this->responses = [ self::greeting() ];
+        $this->responses = $this->unsolicitedGreeting ? [ self::greeting() ] : [];
     }
 
     public function disconnect(): void
@@ -85,7 +86,10 @@ final class SessionPeerTransport implements Transport
         \preg_match('~<clTRID>([^<]+)</clTRID>~', $payload, $matches);
         $code = \str_contains($payload, '<login>') ? $this->loginCode
             : (\str_contains($payload, '<logout/>') ? 1500 : 1300);
-        $this->responses[] = self::response($code, $matches[1] ?? 'missing-id');
+        $response = self::response($code, $matches[1] ?? 'missing-id');
+        $this->responses[] = $this->omitTransactionIds
+            ? \preg_replace('~<clTRID>[^<]*</clTRID>~', '', $response)
+            : $response;
     }
 
     public function readFrame(): string

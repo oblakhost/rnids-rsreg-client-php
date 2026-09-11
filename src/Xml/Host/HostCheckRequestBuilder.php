@@ -21,7 +21,7 @@ final class HostCheckRequestBuilder
         $namesXml = \implode(
             '',
             \array_map(
-                static fn(string $name): string => XmlComposer::element('host:name', $name),
+                static fn(string $name): string => XmlComposer::dnsNameElement('host:name', $name),
                 $request->names,
             ),
         );

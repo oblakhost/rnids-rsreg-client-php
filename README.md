@@ -31,6 +31,11 @@ Install via Composer:
 composer require rnids/rsreg-epp-client
 ```
 
+Internationalized domain and host names are converted to ASCII Punycode when building
+EPP commands. Unicode input requires the PHP `intl` extension; callers without it
+can supply ASCII Punycode names. Registry responses retain the ASCII names sent by
+the registry. Other Unicode fields, such as contact names and remarks, are unchanged.
+
 ## Usage
 
 ```php
@@ -58,6 +63,14 @@ $meta = $client->responseMeta();
 
 $client->close();
 ```
+
+The default `greetingMode` is `unsolicited`, which reads the server greeting before
+login. The RNIDS development endpoint waits for an explicit hello; set
+`'greetingMode' => 'hello'` when connecting to `epp-test.rnids.rs`. Both modes wait
+for the actual login result before making the client available. The development
+server also omits `clTRID` on some successful responses: set
+`'requireClientTransactionId' => false` there. This accepts omitted IDs only;
+present IDs must still match the command. The default remains `true`.
 
 Common fluent entry points:
 
@@ -101,3 +114,10 @@ For local setup, quality gates, commit conventions, and PR guidelines, see [`CON
 ## License
 
 Apache-2.0. See [`LICENSE`](LICENSE).
+
+Live cleanup records resource names and states in `RNIDS_EPP_RESOURCE_LEDGER`, or
+`/tmp/rnids-live-resources-<pid>.json` by default. RNIDS may accept a domain deletion
+with code 1000 while retaining `pendingDelete`; the suite verifies that state and
+records the domain and its linked contacts as `pending`, not removed. Unexpected
+cleanup failures still fail the run. Process pending records after registry deletion
+completes. The ledger contains object identifiers and states, never credentials.

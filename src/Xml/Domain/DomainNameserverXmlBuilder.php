@@ -39,11 +39,11 @@ final class DomainNameserverXmlBuilder
     private function nameserverXml(DomainRegisterNameserver $nameserver, bool $useAttributes): string
     {
         if (!$useAttributes) {
-            return XmlComposer::element('domain:hostObj', $nameserver->name);
+            return XmlComposer::dnsNameElement('domain:hostObj', $nameserver->name);
         }
 
         return '<domain:hostAttr>'
-            . XmlComposer::element('domain:hostName', $nameserver->name)
+            . XmlComposer::dnsNameElement('domain:hostName', $nameserver->name)
             . \implode(
                 '',
                 \array_map(

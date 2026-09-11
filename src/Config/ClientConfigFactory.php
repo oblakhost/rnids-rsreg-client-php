@@ -12,7 +12,8 @@ use RNIDS\Xml\NamespaceRegistry;
  * @phpstan-type ClientOptions array{
  *   host: non-empty-string, username: non-empty-string, password: non-empty-string,
  *   port?: positive-int, connectTimeoutSeconds?: positive-int, readTimeoutSeconds?: positive-int,
- *   language?: non-empty-string, version?: non-empty-string,
+ *   language?: non-empty-string, version?: non-empty-string, greetingMode?: 'unsolicited'|'hello',
+ *   requireClientTransactionId?: bool,
  *   objectUris?: list<non-empty-string>, extensionUris?: list<non-empty-string>, allowPlaintext?: bool,
  *   tls?: array{
  *     clientCertificatePath: non-empty-string, clientCertificatePassword?: string|null,
@@ -57,6 +58,8 @@ final class ClientConfigFactory
             ),
             tlsConfig: self::buildTlsConfig($config),
             allowPlaintext: self::tlsOptionalBool($config, 'allowPlaintext') ?? false,
+            greetingMode: self::optionalString($config, 'greetingMode', 'unsolicited'),
+            requireClientTransactionId: self::tlsOptionalBool($config, 'requireClientTransactionId') ?? true,
         );
     }
 

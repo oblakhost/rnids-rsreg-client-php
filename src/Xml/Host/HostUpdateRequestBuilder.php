@@ -22,7 +22,7 @@ final class HostUpdateRequestBuilder
     {
         $xml = '<update>'
             . '<host:update xmlns:host="' . NamespaceRegistry::HOST . '">'
-            . XmlComposer::element('host:name', $request->name)
+            . XmlComposer::dnsNameElement('host:name', $request->name)
             . $this->sectionXml('host:add', $request->add)
             . $this->sectionXml('host:rem', $request->remove)
             . $this->changeXml($request)
@@ -81,7 +81,7 @@ final class HostUpdateRequestBuilder
         }
 
         return '<host:chg>'
-            . XmlComposer::element('host:name', $request->newName)
+            . XmlComposer::dnsNameElement('host:name', $request->newName)
             . '</host:chg>';
     }
 }

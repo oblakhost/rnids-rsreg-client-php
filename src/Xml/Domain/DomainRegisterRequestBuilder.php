@@ -28,7 +28,7 @@ final class DomainRegisterRequestBuilder
     {
         $xml = '<create>'
             . '<domain:create xmlns:domain="' . NamespaceRegistry::DOMAIN . '">'
-            . XmlComposer::element('domain:name', $request->name)
+            . XmlComposer::dnsNameElement('domain:name', $request->name)
             . $this->periodXml($request)
             . (new DomainNameserverXmlBuilder())->build($request->nameservers)
             . XmlComposer::element('domain:registrant', $request->registrant)

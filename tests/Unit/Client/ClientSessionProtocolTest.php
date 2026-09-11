@@ -119,6 +119,90 @@ final class ClientSessionProtocolTest extends TestCase
         $client->close();
     }
 
+    public function testHelloGreetingModeAuthenticatesARegistryThatWaitsForHello(): void
+    {
+        $peer = new SessionPeerTransport(1000, false);
+        $client = new Client([
+            'host' => 'unused.invalid', 'username' => 'audit', 'password' => 'secret',
+            'greetingMode' => 'hello',
+        ], $peer);
+        $client->init();
+        self::assertSame(1000, $client->responseMeta()['resultCode']);
+        self::assertCount(2, $peer->requests);
+        self::assertStringContainsString('<hello/>', $peer->requests[0]);
+        self::assertStringContainsString('<login>', $peer->requests[1]);
+        $client->session()->poll();
+        self::assertSame(1300, $client->responseMeta()['resultCode']);
+        $client->close();
+        self::assertFalse($peer->connected);
+    }
+
+    public function testExplicitMissingTransactionIdModeAcceptsRnidsLoginAndPollResponses(): void
+    {
+        $peer = new SessionPeerTransport(1000, false);
+        $peer->omitTransactionIds = true;
+        $client = new Client([
+            'host' => 'unused.invalid', 'username' => 'audit', 'password' => 'secret',
+            'greetingMode' => 'hello', 'requireClientTransactionId' => false,
+        ], $peer);
+        $client->init();
+        self::assertSame(1000, $client->responseMeta()['resultCode']);
+        self::assertNull($client->responseMeta()['clientTransactionId']);
+        $client->session()->poll();
+        self::assertSame(1300, $client->responseMeta()['resultCode']);
+        $peer->nextResponse = SessionPeerTransport::response(1300, 'ANOTHER-COMMAND');
+        try {
+            $client->session()->poll();
+            self::fail('Present mismatched transaction ID was accepted.');
+        } catch (MalformedResponseException) {
+            self::assertFalse($peer->connected);
+            self::assertNull($client->responseMeta());
+        }
+    }
+
+    public function testDefaultModeStillRejectsMissingTransactionIds(): void
+    {
+        $peer = new SessionPeerTransport();
+        $peer->omitTransactionIds = true;
+        $client = $this->client($peer);
+        $this->expectException(MalformedResponseException::class);
+        $client->init();
+    }
+
+    public function testMissingTransactionIdCompatibilityCannotAuthenticateWithAnExtraGreeting(): void
+    {
+        $peer = new SessionPeerTransport(2200, true);
+        $client = new Client([
+            'host' => 'unused.invalid', 'username' => 'audit', 'password' => 'secret',
+            'greetingMode' => 'hello', 'requireClientTransactionId' => false,
+        ], $peer);
+        try {
+            $client->init();
+            self::fail('Greeting was accepted in place of login rejection.');
+        } catch (MalformedResponseException) {
+            self::assertFalse($peer->connected);
+            self::assertNull($client->responseMeta());
+        }
+    }
+
+    public function testMissingTransactionIdCompatibilityRejectsGreetingsInCommandResponses(): void
+    {
+        $peer = new SessionPeerTransport();
+        $client = new Client([
+            'host' => 'unused.invalid', 'username' => 'audit', 'password' => 'secret',
+            'requireClientTransactionId' => false,
+        ], $peer);
+        $client->init();
+        $peer->nextResponse = SessionPeerTransport::greeting();
+        try {
+            $client->session()->poll();
+            self::fail('Greeting was accepted as a poll response.');
+        } catch (MalformedResponseException) {
+            self::assertFalse($peer->connected);
+            self::assertNull($client->responseMeta());
+        }
+    }
+
     private function client(SessionPeerTransport $peer): Client
     {
         return new Client(

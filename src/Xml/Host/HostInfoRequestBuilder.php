@@ -20,7 +20,7 @@ final class HostInfoRequestBuilder
     {
         $xml = '<info>'
             . '<host:info xmlns:host="' . NamespaceRegistry::HOST . '">'
-            . XmlComposer::element('host:name', $request->name)
+            . XmlComposer::dnsNameElement('host:name', $request->name)
             . '</host:info>'
             . '</info>';
 
