@@ -122,9 +122,11 @@ workflows, secure-mode changes, and contact clearing require additional recorded
 scenarios; they are not established by those five cases. See the LTS acceptance
 conditions in [SUPPORT.md](SUPPORT.md).
 
-September 12 checks repeated those five cases with verified TLS and additionally
-confirmed DS provisioning/update round trips and field-specific contact clearing.
-Secure-mode change acceptance was observed, with external completion still pending.
+The final September 12 suite at `9992fac` passed six of seven cases with 74
+assertions and verified TLS, including the new DS lifecycle case. Poll
+acknowledgment remained skipped, so `--fail-on-skipped` returned exit 1.
+Additional probes confirmed field-specific contact clearing. Secure-mode change
+acceptance was observed, with external completion still pending.
 The current [registry compatibility record](docs/registry-compatibility.md) includes
 the resulting contact restrictions and the remaining acceptance limits.
 

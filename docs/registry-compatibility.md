@@ -11,11 +11,13 @@ The client certificate was in date, its private key matched, and the server's CA
 chain and hostname verified successfully. Tests authenticated using the existing
 RNIDS test account. No TLS verification was disabled.
 
-The existing six-case suite passed five cases with **52 assertions**, no failures,
-and one skipped poll acknowledgment. Its nonzero exit came from `--fail-on-skipped`.
-The tested command implementation is the same as commit `421256a`. Additional
-field and DS probes ran at `33618b1` before applying the local clearing guards below.
-Tests created disposable resources and kept ownership ledgers for pending deletions.
+The full seven-case suite at `9992fac` passed six cases with **74 assertions**, no
+failures or errors, and one skipped poll acknowledgment. Its nonzero exit came
+from `--fail-on-skipped`. The automated DS lifecycle case accounts for 22 assertions.
+Additional field and secure-mode probes ran at `33618b1` before applying the local
+contact guards below. Tests created disposable resources and kept ownership
+ledgers for pending deletions. The final run removed its child host; two domains
+and three linked contacts remained pending registry deletion.
 
 | Area | Observed result |
 | --- | --- |
