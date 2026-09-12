@@ -20,7 +20,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "zip -r '/tmp/release.zip' ./src README.md ./composer.json LICENSE"
+        "prepareCmd": "bash bin/build-distribution.sh build/release.zip"
       }
     ],
     [
@@ -28,7 +28,7 @@
       {
         "assets": [
           {
-            "path": "/tmp/release.zip",
+            "path": "build/release.zip",
             "name": "rsreg-client-v${nextRelease.version}.zip",
             "label": "RNIDS RsReg Client v${nextRelease.version}"
           }

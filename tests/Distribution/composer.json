@@ -1,0 +1,21 @@
+{
+  "name": "rnids/distribution-smoke",
+  "require": {
+    "rnids/rsreg-epp-client": "1.0.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../package",
+      "options": {
+        "symlink": false,
+        "versions": {
+          "rnids/rsreg-epp-client": "1.0.0"
+        }
+      }
+    },
+    {
+      "packagist.org": false
+    }
+  ]
+}

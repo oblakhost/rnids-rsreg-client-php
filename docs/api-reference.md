@@ -1,6 +1,9 @@
 # API Reference
 
-Client-oriented API documentation for the RNIDS/RSreg EPP library.
+Client-oriented API documentation for an independent third-party RNIDS/RSreg EPP
+library. This project is not affiliated with, endorsed by, or supported by RNIDS.
+The [support policy](../SUPPORT.md) defines the 2.x compatibility contract; see the
+[upgrade guide](../UPGRADING.md) when migrating from 1.x.
 
 ## Entry Points
 

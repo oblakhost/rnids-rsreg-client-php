@@ -2,7 +2,10 @@
 
 Thank you for contributing to `rnids/rsreg-epp-client`.
 
-This project is a modern RNIDS/RSreg EPP client for PHP 8.1+, with strict typing, deterministic XML behavior, and fluent service APIs.
+This project is an independent third-party RNIDS/RSreg EPP client for PHP 8.1+,
+with strict typing, deterministic XML behavior, and fluent service APIs. It is not
+affiliated with, endorsed by, or supported by RNIDS. Follow the
+[2.x compatibility policy](SUPPORT.md) when changing public behavior.
 
 ## Development setup
 
@@ -11,6 +14,10 @@ This project is a modern RNIDS/RSreg EPP client for PHP 8.1+, with strict typing
 - PHP 8.1+
 - Composer
 - `ext-json`, `ext-dom`, and `ext-openssl`
+- `ext-intl` for Unicode domain/host input tests
+- A coverage driver such as PCOV for coverage runs
+- Bash, Git, `unzip`, and `sha256sum` for distribution checks; Composer archive
+  creation also needs either PHP's `zip` extension or the `zip` executable
 
 ### Install dependencies
 
@@ -41,7 +48,19 @@ composer phpstan
 composer phpcs
 composer test:coverage
 composer test:coverage:ci
+composer build:dist
+composer test:dist
 ```
+
+PHPStan runs with a 512 MB memory limit so the same command works on PHP setups
+whose default limit is 128 MB. Socket tests and PHPStan workers need permission
+to bind local loopback sockets; they do not need registry connectivity.
+
+Distribution commands validate committed source: `build:dist` packages `HEAD`,
+and `test:dist` checks extracted Git and Composer archives, including autoloading
+and the bundled CLI. Commit source changes before the final distribution check.
+Run the ordinary local gate before committing. CI checks the committed artifacts
+and all required offline gates before publishing that exact revision.
 
 ### Live integration suite
 
@@ -66,11 +85,37 @@ Configure the RNIDS **test registry** before running mutations:
 
 Preflight checks local credentials, PEM parsing, key matching, and certificate validity before trying TCP connectivity. The dummy unit-test certificate is excluded from discovery. Configure explicit certificate paths for reliable runs; never commit real credentials or keys.
 
+The integration configuration uses the observed development-server behavior:
+`greetingMode=hello` and `requireClientTransactionId=false`. Supplied transaction
+IDs must still match. Endpoint overrides do not automatically change these test
+settings; do not point this mutation suite at production.
+
 The mutation scenarios create their own contacts, domain, and host, exercise updates and domain renewal, then delete resources in dependency order. Cleanup failures fail the test and identify resources requiring manual removal. Domain creation/renewal requires sufficient test-account credit. Registry policy, approval delays, interrupted connections, or deletion restrictions can still require manual cleanup.
 
-CI runs live tests only through the `run_live` manual workflow input, or on pushes with repository variable `RNIDS_RUN_LIVE=true`. When enabled, missing secrets or skipped tests fail the job. Configure secrets `RNIDS_EPP_USER`, `RNIDS_EPP_PASS`, `RNIDS_EPP_CERT`, `RNIDS_EPP_ROOT`, and `RNIDS_EPP_CLIENT_CERT_PASSWORD`, plus repository variables matching the fixture names above. Otherwise the live job is visibly skipped.
+Set `RNIDS_EPP_RESOURCE_LEDGER` to retain an ownership ledger at a known location;
+otherwise it is written to `/tmp/rnids-live-resources-<pid>.json`. Accepted domain
+deletion may leave `pendingDelete` and linked contacts. These resources are recorded
+as pending, not removed. Revisit only recorded owned resources after deletion
+completes; contact identifiers may remain unavailable even after the contact object
+is gone. The suite verifies contact absence through an info response with `2303`.
 
-Transfer lifecycle verification remains an external prerequisite: it needs two authorized registrar accounts, certificates for each, a disposable domain, and the RNIDS transfer-code/approval workflow. This suite does not claim successful transfer coverage from a single account or fabricated responses. Secure-mode approval flows and real server interoperability also require a scheduled RNIDS test run after access is available.
+CI runs live tests only through the `run_live` manual workflow input, after the
+offline quality gate passes. Pushes run offline checks and may publish a release;
+they do not perform registry mutations. The former `RNIDS_RUN_LIVE` repository
+variable no longer starts live runs. When requested, missing secrets or skipped
+tests fail the live job. Configure secrets `RNIDS_EPP_USER`, `RNIDS_EPP_PASS`,
+`RNIDS_EPP_CERT`, `RNIDS_EPP_ROOT`, and `RNIDS_EPP_CLIENT_CERT_PASSWORD`, plus
+repository variables matching the fixture names above. Live runs share one
+repository-wide concurrency group and an active run is not canceled by a newer run.
+
+Transfer lifecycle verification remains an external prerequisite: it needs two authorized registrar accounts, certificates for each, a disposable domain, and the RNIDS transfer-code/approval workflow. This suite does not claim successful transfer coverage from a single account or fabricated responses.
+
+The September 11, 2026 run at `421256a` completed five existing live cases with 52
+assertions and skipped poll acknowledgment because no message was approved. The
+command exited 1 due to `--fail-on-skipped`. DNSSEC DS acceptance, complete transfer
+workflows, secure-mode changes, and contact clearing require additional recorded
+scenarios; they are not established by those five cases. See the LTS acceptance
+conditions in [SUPPORT.md](SUPPORT.md).
 
 ## Coding conventions
 

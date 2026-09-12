@@ -16,15 +16,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ (inputs.run_live || vars.RNIDS_RUN_LIVE == 'true') && 'live' || 'unit' }}
-  cancel-in-progress: ${{ !inputs.run_live && vars.RNIDS_RUN_LIVE != 'true' }}
-
 jobs:
   unit-tests:
     name: PHPUnit (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.php == '8.5' }}
+    concurrency:
+      group: tests-${{ github.event_name }}-${{ github.ref }}-php-${{ matrix.php }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -38,6 +36,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
+          extensions: dom, openssl, json, intl
           coverage: pcov
 
       - name: Cache Composer dependencies
@@ -67,11 +66,92 @@ jobs:
           slug: oblakhost/rnids-rsreg-client-php
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  static-analysis:
+    name: PHPStan and PHPCS
+    runs-on: ubuntu-latest
+    concurrency:
+      group: static-analysis-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: dom, openssl, json, intl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPStan
+        run: composer phpstan
+
+      - name: Run PHPCS
+        run: composer phpcs
+
+  distribution:
+    name: Distribution smoke check
+    runs-on: ubuntu-latest
+    concurrency:
+      group: distribution-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: dom, openssl, json, intl
+          coverage: none
+
+      - name: Build and test both distribution archives offline
+        run: composer test:dist
+
+  offline-gate:
+    name: Offline quality gate
+    if: always()
+    needs: [unit-tests, static-analysis, distribution]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every offline check to pass
+        env:
+          UNIT_RESULT: ${{ needs.unit-tests.result }}
+          STATIC_RESULT: ${{ needs.static-analysis.result }}
+          DISTRIBUTION_RESULT: ${{ needs.distribution.result }}
+        run: |
+          test "$UNIT_RESULT" = success
+          test "$STATIC_RESULT" = success
+          test "$DISTRIBUTION_RESULT" = success
+
+  release:
+    name: Release
+    needs: offline-gate
+    if: >-
+      github.event_name == 'push' &&
+      contains(fromJSON('["refs/heads/master", "refs/heads/develop", "refs/heads/alpha", "refs/heads/beta"]'), github.ref)
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    uses: ./.github/workflows/release.yml
+    secrets:
+      OBLAKBOT_PAT: ${{ secrets.OBLAKBOT_PAT }}
+      OBLAKBOT_GPG_KEY: ${{ secrets.OBLAKBOT_GPG_KEY }}
+      OBLAKBOT_GPG_PASS: ${{ secrets.OBLAKBOT_GPG_PASS }}
+
   integration-live:
     name: Integration (live RNIDS)
-    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.run_live) || (github.event_name == 'push' && vars.RNIDS_RUN_LIVE == 'true') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_live }}
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: offline-gate
+    concurrency:
+      group: integration-live-${{ github.repository }}
+      cancel-in-progress: false
     env:
       RNIDS_EPP_USERNAME: ${{ secrets.RNIDS_EPP_USER }}
       RNIDS_EPP_PASSWORD: ${{ secrets.RNIDS_EPP_PASS }}
@@ -99,6 +179,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.1"
+          extensions: dom, openssl, json, intl
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-interaction

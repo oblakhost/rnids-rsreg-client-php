@@ -1,0 +1,8 @@
+Independent third-party project
+
+This PHP library is not affiliated with, endorsed by, or supported by RNIDS.
+References to RNIDS and RSreg identify the registry and protocol integration
+target. The Composer package name and PHP namespace are retained for
+compatibility and do not imply official authorship or endorsement.
+
+The library is distributed under the Apache License, Version 2.0. See LICENSE.

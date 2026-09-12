@@ -24,6 +24,12 @@ omitted. Boolean settings require actual booleans; malformed TLS configuration t
 
 Optional connection keys include `port`, `connectTimeoutSeconds`, `readTimeoutSeconds`,
 `language`, `version`, `objectUris`, and `extensionUris`. Timeouts are integer seconds.
+`greetingMode` is `unsolicited` by default or `hello` for a peer that waits for
+an explicit hello. `requireClientTransactionId` defaults to `true`; setting it to
+`false` accepts responses with omitted IDs but still rejects present mismatches.
+The RNIDS development endpoint has required `hello` and acceptance of omitted IDs
+in testing. Configure these explicitly for that endpoint; verify production settings
+independently.
 `allowPlaintext => true` explicitly permits native plaintext connections to local test
 peers. Injected transports own their connection/security settings and do not require
 native TLS configuration.
@@ -32,7 +38,7 @@ native TLS configuration.
 
 ### `init(): void`
 
-Connects the transport, reads the unsolicited greeting, and waits for the actual login
+Connects the transport, obtains the configured greeting, and waits for the actual login
 response. Rejected authentication is thrown before initialization returns.
 
 - Idempotent: repeated calls after successful initialization are no-ops.
@@ -46,7 +52,8 @@ response. Rejected authentication is thrown before initialization returns.
 Convenience factory that returns an already initialized client (`new Client($config)` + `init()`).
 
 All service groups share a command executor and a transaction-ID generator unique to
-that client instance. Replies must match the submitted `clTRID`; mismatches and damaged
+that client instance. Supplied reply IDs must match the submitted `clTRID`; omitted
+IDs are accepted only when explicitly configured. Mismatches and damaged
 frames disconnect the session. Cached service references cannot continue sending on an
 invalidated session. Commands are never automatically retried after an uncertain outcome.
 
@@ -102,3 +109,9 @@ Metadata is cleared before each exchange or reconnect attempt. A transport failu
 malformed response, or transaction mismatch leaves null; a valid EPP error response
 retains its own result code and transaction IDs. Local input validation performed
 before an exchange leaves the previous response available.
+
+An accepted operation may still require registry completion. Read metadata before
+another command overwrites it and inspect the object's state for pending changes.
+After a transport failure, a sent mutation may have completed without a response;
+reconnect and reconcile state before retrying. See
+[operation outcomes](../SUPPORT.md#operation-outcomes).

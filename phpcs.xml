@@ -10,5 +10,6 @@
   </rule>
 
   <file>src/</file>
+  <file>bin/rsreg</file>
 
 </ruleset>
