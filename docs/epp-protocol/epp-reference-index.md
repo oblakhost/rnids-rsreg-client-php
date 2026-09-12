@@ -1,6 +1,11 @@
 # RsReg2 / RNIDS EPP Reference Index
 
-This documentation set is derived from `EPP-commands.txt` (RsReg2 EPP Commands, v1.2) and rewritten as implementation-oriented markdown for this repository.
+This documentation set summarizes `EPP-commands.txt` (RsReg2 EPP Commands, v1.2),
+the historical source document, which is not distributed in this repository.
+It is maintained by an independent third-party project unaffiliated with RNIDS.
+Protocol descriptions do not establish SDK support or verified registry acceptance;
+consult the [API reference](../api-reference.md) for implemented operations and the
+[registry compatibility record](../registry-compatibility.md) for live evidence.
 
 ## Scope
 
@@ -9,7 +14,7 @@ This documentation set is derived from `EPP-commands.txt` (RsReg2 EPP Commands, 
 - Additional coverage:
   - DNSSEC extension (`secDNS-1.1`)
   - RNIDS domain/contact extensions
-  - Finance info object
+  - Finance info object (protocol reference only; not implemented by the SDK or CLI)
   - Poll message model
 
 ## Core Namespaces
@@ -20,6 +25,7 @@ This documentation set is derived from `EPP-commands.txt` (RsReg2 EPP Commands, 
 - Host: `urn:ietf:params:xml:ns:host-1.0`
 - Finance: `urn:ietf:params:xml:ns:finance-1.0`
 - secDNS: `urn:ietf:params:xml:ns:secDNS-1.1`
+- RNIDS login extension URI: `http://www.rnids.rs/epp/xml/rnids-1.0`
 - RNIDS domain extension: `http://www.rnids.rs/epp/xml/domain-rnids-ext-1.0`
 - RNIDS contact extension: `http://www.rnids.rs/epp/xml/contact-rnids-ext-1.0`
 
@@ -61,5 +67,6 @@ Common result codes seen across RsReg2 operations:
 
 - Keep request XML deterministic and namespace-explicit.
 - Include `clTRID` on command requests.
-- Treat RNIDS extension fields as first-class typed DTO fields.
+- Public services accept and return shaped arrays; RNIDS extension fields use
+  typed DTO properties internally.
 - For transfer and secure-mode updates, follow RsReg2-specific behaviors described in command docs.

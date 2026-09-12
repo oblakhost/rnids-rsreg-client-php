@@ -68,11 +68,11 @@ array{
   registrant: non-empty-string,
   contacts: non-empty-list<array{type: 'admin'|'tech'|'billing', handle: non-empty-string}>,
   period?: positive-int|null,
-  periodUnit?: 'y'|'m',
+  periodUnit?: 'y'|'m'|null,
   nameservers?: list<array{
     name: non-empty-string,
-    addresses?: list<non-empty-string|array{address: non-empty-string, ipVersion: 'v4'|'v6'}>
-  }>,
+    addresses?: list<non-empty-string|array{address: non-empty-string, ipVersion: 'v4'|'v6'}>|null
+  }>|null,
   authInfo?: non-empty-string|null,
   extension?: array{
     isWhoisPrivacy?: bool|null,
@@ -118,6 +118,10 @@ otherwise supply the current registry date (`Y-m-d` or an ISO timestamp whose fi
 `array{domain: string, expiryDate: DateTimeImmutable|null}`.
 
 `delete(string $name): array{}` returns an empty array on success.
+Registry acceptance can precede removal: development-registry deletes returned
+`1000` while info still showed `pendingDelete` or `pendingUpdate`. Read
+`responseMeta()` before another command and reconcile object state before removing
+linked contacts. See the [registry compatibility record](registry-compatibility.md).
 
 ## Update
 
@@ -126,16 +130,17 @@ is a nonempty domain string. Optional `add` and `remove` sections accept:
 
 ```php
 array{
-  contacts?: list<array{type: 'admin'|'tech'|'billing', handle: non-empty-string}>,
-  statuses?: list<non-empty-string>,
+  contacts?: list<array{type: 'admin'|'tech'|'billing', handle: non-empty-string}>|null,
+  statuses?: list<non-empty-string>|null,
   nameservers?: non-empty-string|list<non-empty-string|array{
     name: non-empty-string,
-    addresses?: list<non-empty-string|array{address: non-empty-string, ipVersion: 'v4'|'v6'}>
-  }>
+    addresses?: list<non-empty-string|array{address: non-empty-string, ipVersion: 'v4'|'v6'}>|null
+  }>|null
 }
 ```
 
-A supplied section must contain a change. Unknown top-level, section, and extension
+A nonnull section must contain a change; omission or null leaves it unchanged.
+Unknown top-level, section, and extension
 keys are rejected. Top-level `registrant` and `authInfo` accept nonempty strings
 or null (omitted). `extension` accepts the register fields; its `remark` additionally
 accepts an empty string to clear it. `operationMode` accepts `normal` or `secure` on both registration and update. An extension-only change is valid;
@@ -157,15 +162,21 @@ $client->domain()->update([
 ```
 
 RNIDS gives registrant changes precedence over other mutations. The client
-rejects mixed registrant requests; submit the registrant change separately. Secure mode can produce pending changes. Consult
+rejects mixed registrant requests; submit the registrant change separately.
+Normal-to-secure changes completed in development-registry tests. Secure-to-normal
+returned `1000` while info retained `secure` and `pendingUpdate`; external approval
+and final completion remain unverified. Consult
 [RNIDS update processing rules](epp-protocol/epp-domain-commands.md#rsreg2-specific-processing-rules).
 
 ## DNSSEC DS records
 
 The implementation uses the DS interface of
 [RFC 5910, secDNS 1.1](https://www.rfc-editor.org/rfc/rfc5910.html), constrained by
-the [checked-in RNIDS reference](epp-protocol/epp-domain-commands.md). It has offline
-XML and behavior tests; live RNIDS acceptance has not been verified.
+the [checked-in protocol summary](epp-protocol/epp-domain-commands.md). Development-registry
+tests verified registration with DS data, info readback, add, selective removal,
+replacement with removeAll plus add, and removeAll, including exact record values.
+This verifies registry DS storage; nameserver signing and resolver validation are
+outside those tests. See the [registry compatibility record](registry-compatibility.md).
 
 Each record has integer `keyTag` (0–65535), `alg` (3, 5, 6, 7, 8, 10, 13, 14),
 `digestType` (1, 2, 3, 4), and hexadecimal `digest` (40, 64, 64, or 96 characters,
@@ -188,6 +199,10 @@ DNSSEC updates cannot include base-domain or RNIDS extension changes: RNIDS woul
 ignore them, so the client rejects the mixed request. Use separate calls.
 
 ## Transfers
+
+Full transfer workflows remain unverified end to end. They require two authorized
+registrar accounts and the external transfer-code/approval workflow described in
+the [registry compatibility record](registry-compatibility.md).
 
 The explicit methods correspond directly to EPP transfer operations:
 

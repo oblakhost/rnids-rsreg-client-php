@@ -27,10 +27,18 @@ composer install
 
 ## Project standards
 
+Agent guidance lives in `AGENTS.md`. Historical audits under `docs/audits/` record
+findings at their stated revisions; use current API docs and the registry
+compatibility record for present behavior.
+
 - Keep RNIDS/RSreg behavior explicit and first-class.
 - Prefer typed DTOs and small single-purpose methods.
 - Keep XML composition/parsing deterministic and namespace-safe.
 - Preserve fluent API discoverability from `RNIDS\Client` entry points.
+
+The `old-client/` directory is a frozen behavior reference, excluded from
+Composer autoloading and release archives. It has no separate 2.x support promise.
+Preserve its source and license; implement fixes in `src/` and current tests.
 
 ## Quality gates
 
@@ -129,6 +137,8 @@ Additional probes confirmed field-specific contact clearing. Secure-mode change
 acceptance was observed, with external completion still pending.
 The current [registry compatibility record](docs/registry-compatibility.md) includes
 the resulting contact restrictions and the remaining acceptance limits.
+The [LTS acceptance procedure](docs/lts-acceptance.md) specifies the access,
+operator actions, and evidence needed to complete those remaining checks.
 
 ## Coding conventions
 

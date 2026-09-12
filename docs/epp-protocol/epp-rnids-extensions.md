@@ -1,6 +1,9 @@
 # RNIDS Extension Reference
 
-Consolidated reference for RsReg2-specific extensions described in `EPP-commands.txt` appendix.
+Consolidated reference for RsReg2-specific extensions described in the historical
+`EPP-commands.txt` appendix. See the [reference index](epp-reference-index.md) for
+scope and the [registry compatibility record](../registry-compatibility.md) for
+verified development-registry behavior.
 
 ## 1) Domain Extension
 
@@ -25,6 +28,9 @@ Consolidated reference for RsReg2-specific extensions described in `EPP-commands
 ### Operation-Context Notes
 - Used in domain create/update extension requests.
 - Returned in domain info extension response.
+- Create/update inputs are `remark`, `isWhoisPrivacy`, `operationMode`, `notifyAdmin`,
+  and `dnsSec`. Verification and payment fields are info response data; see the
+  [Domain API](../api-domain.md) for the array keys and returned date objects.
 - `operationMode` has strong behavioral impact (`secure` can trigger deferred approval flows for some updates).
 - In documented behavior, stored DNSSEC state is driven by secDNS details, not only `dnsSec` flag value.
 
@@ -47,7 +53,9 @@ Consolidated reference for RsReg2-specific extensions described in `EPP-commands
 ### Operation-Context Notes
 - Used in contact create/update extension requests.
 - Returned in contact info extension response.
-- These fields should be modeled as typed first-class DTO properties in this library API.
+- Public services expose these fields through shaped arrays and use typed DTO
+  properties internally. See the [Contact API](../api-contact.md) for value types
+  and supported clearing behavior.
 
 ## 3) Finance Info Object Schema
 
@@ -59,4 +67,5 @@ Consolidated reference for RsReg2-specific extensions described in `EPP-commands
 - response: `finance:infData`
 - payload field: `finance:balance` (`decimal`)
 
-This is functionally used by the `finance:info` command and documented separately in [Finance and Poll](./epp-finance-and-poll.md).
+This protocol object is documented in [Finance and Poll](./epp-finance-and-poll.md).
+The current SDK and CLI do not implement `finance:info`.

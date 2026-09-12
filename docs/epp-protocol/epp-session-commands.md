@@ -61,9 +61,15 @@ Terminate active session.
 Typical command order:
 
 1. Connect transport
-2. Receive greeting / send `hello`
+2. Obtain the greeting using the configured mode: receive it unsolicited or send `hello`
 3. `login`
 4. Perform object commands
 5. `logout`
 
-For this client implementation, include `clTRID` on command requests for traceability.
+The SDK defaults to `greetingMode => 'unsolicited'`; development-registry testing
+required `greetingMode => 'hello'`. Commands always include `clTRID`, and responses
+must match it. With `requireClientTransactionId => false`, omitted response IDs
+are accepted while supplied mismatches still fail; the development endpoint needs
+this setting. The CLI selects these defaults for `epp-test.rnids.rs` automatically.
+See [client configuration](../api-client.md) and the
+[registry compatibility record](../registry-compatibility.md).

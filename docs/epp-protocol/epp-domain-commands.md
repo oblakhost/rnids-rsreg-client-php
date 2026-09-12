@@ -12,7 +12,7 @@ Check availability for one or more domain names.
 
 ### Response (`domain:chkData`)
 - Repeating `<cd>` entries with:
-  - `<name avail="1|0">`
+  - `<name avail="1|0|true|false">` (XML boolean lexical forms)
   - optional `<reason lang="en|sr-Latn-RS">`
 
 ### Typical Errors
@@ -107,9 +107,18 @@ Modify domain details, nameservers, contacts, locks, registrant, RNIDS extension
 4. In secure mode, changing DNS/admin contact/privacy or switching `secure -> normal` creates a pending change request.
 5. Otherwise, updates are committed immediately.
 
+The client rejects requests that mix registrant or DNSSEC changes with other
+mutations. Development-registry testing confirmed normal-to-secure completion;
+secure-to-normal returned `1000` while info retained `secure` and `pendingUpdate`.
+Completion after external approval remains unverified. See the
+[registry compatibility record](../registry-compatibility.md).
+
 ### DNSSEC Update Notes
 - Supports `secDNS:rem` (`all` or specific `dsData`) and `secDNS:add` (`dsData`).
 - `keyData` and some optional attributes/options are not supported.
+- Development-registry tests verified DS create/info, add, selective removal,
+  replacement using remove-all plus add, and remove-all. This verifies DS storage,
+  not authoritative nameserver signing or resolver validation.
 
 ### Typical Errors
 - `2003` missing required fields (including DNSSEC required fields)
@@ -140,11 +149,12 @@ Extend validity period.
 
 ### Client Convenience API (this library)
 
-- Full payload (legacy-compatible):
-  - `domain()->renew(array $request)`
-- Simplified fluent form:
-  - `domain()->renew($domain, $years)`
-- Note: EPP still requires `curExpDate`; the client resolves it internally via domain info before sending renew.
+- `domain()->renew($domain, $years = 1, $expiry = null)` accepts 1–10 years.
+- EPP requires `curExpDate`. Omit `$expiry` to resolve it via domain info; otherwise
+  pass the current expiration as a date string or `DateTimeInterface`.
+- The result is `array{domain: string, expiryDate: DateTimeImmutable|null}`. The
+  service accepts scalar arguments; the CLI translates its JSON renewal payload
+  to this signature. See the [Domain API](../api-domain.md#renew-and-delete).
 
 ## `domain:transfer`
 
@@ -167,6 +177,11 @@ Manage transfer lifecycle.
 - `request`/`query` generally return `domain:trnData`
 - `cancel`/`approve`/`reject` may return success without `resData`
 
+The SDK exposes all five operations; full transfers between two registrars and the
+external transfer-code/approval workflow remain unverified end to end. The SDK
+transfer methods accept domain and optional authorization information; they do
+not expose the protocol's optional transfer period.
+
 ### Typical Errors
 - `2202` invalid auth info
 - `2301` not pending transfer
@@ -184,6 +199,9 @@ Delete a domain object.
 
 ### Response
 - Success (`1000` or `1001`), no `resData`.
+- Development-registry deletes returned `1000` while the domain remained pending
+  deletion/update. Reconcile info state before attempting linked-contact cleanup;
+  see the [registry compatibility record](../registry-compatibility.md).
 
 ### Typical Errors
 - `2201` authorization error

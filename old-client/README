@@ -1,3 +1,6 @@
+ARCHIVED REFERENCE: see README.md in this directory for the archive policy.
+The following original notes are historical, not current setup instructions.
+
 Za uspostavljanje veze sa serverom u produkciji će biti neophodno da klijent prilikom povezivanja pošalje i klijentski sertifikat. 
 Validni su sertifikati koji se trenutno koriste za povezivanje sa javnim web servisima (RsReg aplikacija).
 Konvertovanje sertifikata iz pfx u pem format se radi pomoću OpenSSL-a. Komanda je: OpenSSL pkcs12 -in vassertifikat.pfx -out vassertifikat.pem -nodes

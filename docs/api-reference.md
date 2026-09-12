@@ -19,12 +19,15 @@ The [support policy](../SUPPORT.md) defines the 2.x compatibility contract; see 
 - They do not wrap that list in an `items` key.
 - Contact creation retains `OBL-` ID generation. Update/info/delete preserve existing registry IDs.
 - Contact extension values preserve caller input. An omitted or null optional update field is
-  unchanged; an empty string clears a supported optional text field.
+  unchanged; empty-string clearing is limited to the fields listed in the
+  [Contact API](api-contact.md#updatearray-request-array).
 - Services retain their array API with explicit PHPDoc shapes and typed internal DTOs.
 - Domain transfer methods have explicit request/query/approve/cancel/reject names; legacy aliases remain.
 
 ## Live Integration Notes
 
+- The [registry compatibility record](registry-compatibility.md) records verified
+  development-registry behavior and the remaining prerequisites for LTS designation.
 - Offline tests exercise framing and session behavior against a local EPP peer.
 - Live lifecycle tests create and clean up their own objects. Poll acknowledgment requires
   an explicitly configured message ID. Full setup is in [Contributing](../CONTRIBUTING.md).

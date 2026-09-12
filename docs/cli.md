@@ -53,6 +53,8 @@ These settings remove the corresponding server authentication checks.
 
 Every invocation connects, greets the server, logs in, executes one operation, and
 logs out. `session:hello` and `session:poll` use the authenticated session too.
+The CLI's `session:poll` only reads the queue; acknowledgment is available through
+the [session API](api-session.md).
 Check commands accept comma-separated names or IDs; surrounding whitespace and
 empty entries are removed. Info and delete commands accept one name or ID.
 
@@ -72,7 +74,7 @@ references for complete fields and registry requirements.
 
 ```sh
 vendor/bin/rsreg domain:register '{"name":"example.rs","registrant":"CID-REG","period":1,"contacts":[{"type":"admin","handle":"CID-ADMIN"},{"type":"tech","handle":"CID-TECH"}]}'
-vendor/bin/rsreg domain:update '{"name":"example.rs","add":{"statuses":["clientHold"]}}'
+vendor/bin/rsreg domain:update '{"name":"example.rs","extension":{"isWhoisPrivacy":true}}'
 vendor/bin/rsreg contact:create '{"id":"OBL-NEW","postalInfo":{"name":"John Doe","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"voice":"+381.111234567","email":"john@example.rs"}'
 vendor/bin/rsreg contact:update '{"id":"CID-12345","email":"new@example.rs"}'
 vendor/bin/rsreg host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'

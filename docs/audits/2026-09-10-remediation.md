@@ -1,5 +1,12 @@
 # Audit remediation — 2026-09-10
 
+> Historical report: the changes and verification below describe September 10,
+> 2026. Later authenticated development-registry tests established greeting
+> configuration, verified DS provisioning, and narrowed supported contact clearing.
+> Use the [registry compatibility record](../registry-compatibility.md) and linked
+> API documentation for current behavior and remaining LTS prerequisites. The
+> original access limitations and test counts below are preserved as recorded.
+
 The locally reproducible defects from the [library audit](2026-09-10-library-review.md)
 have been repaired and covered by regression tests. No RNIDS connections were made
 during this remediation: EPP access is not yet available. Registry acceptance remains

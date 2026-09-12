@@ -3,6 +3,11 @@
 This is the original audit snapshot. Subsequent offline fixes and compatibility notes
 are recorded in [the remediation report](2026-09-10-remediation.md).
 
+> Historical report: findings, certificate/access limitations, and test counts
+> below describe September 10, 2026 and are preserved as recorded. For subsequent
+> authenticated development-registry tests, DNSSEC verification, and remaining
+> LTS prerequisites, use the [registry compatibility record](../registry-compatibility.md).
+
 The library has a useful separation between services, XML handling, and native
 transport, but passing tests currently overstate its operational reliability.
 The highest priorities are session response alignment, TLS configuration, domain

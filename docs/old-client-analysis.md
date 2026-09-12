@@ -1,6 +1,10 @@
 # Old Client Functional Analysis (`old-client/`)
 
-This document captures the functional behavior of the legacy RNIDS EPP client and serves as a migration reference for the new implementation in `src/`.
+This document inventories the legacy RNIDS EPP implementation retained in
+`old-client/`. It is a source comparison reference, not current setup guidance or
+evidence of live interoperability. The maintained 2.x implementation is in `src/`.
+See the [archive policy](../old-client/README.md), [current API](api-reference.md),
+and [verified registry behavior](registry-compatibility.md).
 
 ## 1) High-Level Layout
 
@@ -173,17 +177,30 @@ RNIDS extension response classes:
 Practical meaning for migration:
 - RNIDS-specific contact/domain fields are already first-class in behavior and must remain first-class in the new client API and DTOs.
 
-## 8) Functional Parity Checklist for New `src/` Client
+## 8) Maintained behavior coverage
 
-To preserve old-client behavior, the new fluent client should fully cover:
-- Session: hello, login, logout, poll
-- Domain: check, info, register(create), renew, update, delete, transfer flows (request/query/approve/reject)
-- Contact: create, info, update, delete
-- Host: check, info, create, update, delete
-- RNIDS extension handling for domain/contact operations
-- EPP result code handling and exception mapping
-- Deterministic XML generation + namespace-safe parsing
-- EPP frame protocol (length prefix) and TLS/certificate support
+The current implementation exposes the following operation groups. Its public
+service methods use documented arrays; builders and parsers use typed DTOs
+internally. Legacy class names and mutable DOM objects are not public 2.x APIs.
+
+| Legacy responsibility | Maintained implementation |
+| --- | --- |
+| Hello, login, logout, poll | `src/Session/`; poll request and acknowledgment are explicit |
+| Domain lifecycle | `src/Domain/`; check, info, register, renew, update, delete |
+| Domain transfers | Request, query, approve, cancel, reject; compatibility aliases retained |
+| Contact lifecycle | `src/Contact/`; check, create, info, update, delete with RNIDS validation |
+| Host lifecycle | `src/Host/`; check, info, create, update, delete |
+| RNIDS contact/domain extensions | Typed internal extension data and documented request fields |
+| XML and EPP errors | Deterministic builders, namespace-safe parsers, typed exceptions and response metadata |
+| Framing and transport | Dedicated frame codec, native streams, explicit TLS config |
+
+The generic HTTP/HTTPS adapters, domain-claim objects, and undelete classes found
+in the legacy tree are not supported fluent operations in 2.x. Their presence here
+does not expand the current API contract. See [SUPPORT.md](../SUPPORT.md).
+
+Unit coverage establishes request, parsing, and client behavior. The
+[registry compatibility record](registry-compatibility.md) separately records
+live outcomes and the remaining transfer, secure-mode, and poll acceptance work.
 
 ## 9) Old → New Responsibility Mapping
 
@@ -196,4 +213,7 @@ To preserve old-client behavior, the new fluent client should fully cover:
 
 ---
 
-This document should be treated as a behavior inventory, not a design constraint on old architecture style. The new implementation should preserve capability while moving to strict types, DTO-driven APIs, fluent services, and RNIDS-first domain modeling.
+Retain this inventory and the original implementation for source comparison.
+Apply fixes to the maintained client and its regression tests. Neither the legacy
+examples nor old registry assumptions override the current documented API or
+observed registry behavior.

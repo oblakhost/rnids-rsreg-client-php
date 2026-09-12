@@ -24,12 +24,18 @@ omitted. Boolean settings require actual booleans; malformed TLS configuration t
 
 Optional connection keys include `port`, `connectTimeoutSeconds`, `readTimeoutSeconds`,
 `language`, `version`, `objectUris`, and `extensionUris`. Timeouts are integer seconds.
+Defaults are port `700`, connect timeout `10`, read timeout `20`, language `en`,
+and version `1.0`. The default object URIs are domain, contact, and host 1.0;
+the default extension URI is `http://www.rnids.rs/epp/xml/rnids-1.0`, with secDNS
+negotiated during initialization as described below.
 `greetingMode` is `unsolicited` by default or `hello` for a peer that waits for
 an explicit hello. `requireClientTransactionId` defaults to `true`; setting it to
 `false` accepts responses with omitted IDs but still rejects present mismatches.
 The RNIDS development endpoint has required `hello` and acceptance of omitted IDs
 in testing. Configure these explicitly for that endpoint; verify production settings
 independently.
+See the [registry compatibility record](registry-compatibility.md) for the observed
+development-endpoint behavior.
 `allowPlaintext => true` explicitly permits native plaintext connections to local test
 peers. Injected transports own their connection/security settings and do not require
 native TLS configuration.

@@ -4,6 +4,9 @@ Reference for finance info and message queue handling in RsReg2.
 
 ## `finance:info`
 
+This section describes the protocol only. The current SDK and CLI do not provide
+a finance service, command, builder, or parser.
+
 ### Purpose
 Retrieve registrar account balance.
 
@@ -32,7 +35,8 @@ Fetch first queued service message for client.
 2. `1300` — no queued messages
 
 ### Notes
-- Queue processing is explicit: each fetched message must be acknowledged.
+- Queue processing is explicit: a fetched message stays queued until acknowledged.
+  Process and persist it before acknowledging its ID.
 - Message format is generally `Code:Message` (for example `M100:Domain domen.rs registration successful`).
 
 ### Typical Errors
@@ -45,6 +49,12 @@ Confirm message receipt and dequeue message.
 
 ### Request
 - `<poll op="ack" msgID="..."/>`
+
+The [session API](../api-session.md) exposes this through
+`poll(['operation' => 'ack', 'messageId' => $messageId])`; the CLI only reads the
+queue. Read-only poll passed development-registry testing. Acknowledgment of an
+approved disposable message remains unverified; see the
+[registry compatibility record](../registry-compatibility.md).
 
 ### Response
 - `1000` success

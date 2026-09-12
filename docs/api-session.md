@@ -8,9 +8,12 @@
 
 Sends EPP hello and returns server capabilities.
 
-Client initialization consumes the unsolicited greeting separately, before sending login.
-`hello()` sends a new hello request on the current session. `receiveGreeting()` is the
-low-level operation for reading the initial greeting without writing a command.
+Client initialization obtains the greeting before sending login: it reads an
+unsolicited greeting by default, or sends hello when `greetingMode` is `hello`.
+The development endpoint requires the latter; see [client configuration](api-client.md).
+Calling `hello()` explicitly sends a new hello request on the current session.
+`receiveGreeting()` is the low-level operation for reading the initial greeting
+without writing a command; it returns the same shape as `hello()`.
 
 Response shape:
 
@@ -27,7 +30,9 @@ array{
 
 ### `login(array $request): array{}`
 
-Authenticates a session.
+Authenticates a connected, unauthenticated session. Normal use through `Client`
+performs login during `init()` or `ready()` using the client configuration;
+the registry can reject duplicate login with result code `2002`.
 
 Request shape:
 
@@ -63,6 +68,11 @@ array{messageId?: non-empty-string, operation?: 'req'|'ack'}
 
 - `req` (default) — fetch next queued message
 - `ack` — acknowledge a specific message id (`messageId` is required)
+
+Reading leaves the message queued. Acknowledge its ID only after processing and
+persisting the message. The development-registry record verifies read-only poll;
+acknowledgment of an approved disposable message remains unverified. See the
+[registry compatibility record](registry-compatibility.md).
 
 Response shape:
 

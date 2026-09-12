@@ -12,7 +12,7 @@ Determine availability/existence of host objects.
 
 ### Response (`host:chkData`)
 - Repeating `<cd>` entries:
-  - `<name avail="1|0">`
+  - `<name avail="1|0|true|false">` (XML boolean lexical forms)
   - optional `<reason lang="en|sr-Latn-RS">`
 
 ### Typical Errors

@@ -26,6 +26,9 @@ distinguishes completed checks from outstanding external workflows. Successful
 offline tests or a skipped live test do not establish registry acceptance. This
 is a project support policy, not RNIDS certification.
 
+The [LTS acceptance procedure](docs/lts-acceptance.md) defines the remaining
+operator prerequisites and the evidence required before changing this designation.
+
 `master` publishes stable 2.x releases; `develop`, `alpha`, and `beta` publish
 prereleases. Before development moves to a new major on `master`, create and test
 a separate 2.x maintenance/release branch for the remainder of this support window.
