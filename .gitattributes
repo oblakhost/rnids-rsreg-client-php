@@ -1,3 +1,4 @@
+/.git               export-ignore
 /.github            export-ignore
 /.beads             export-ignore
 /.claude            export-ignore
