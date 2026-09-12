@@ -114,6 +114,7 @@ are missing or any tests are skipped. See [Contributing](CONTRIBUTING.md) for se
 - Support and compatibility: [`SUPPORT.md`](SUPPORT.md)
 - Upgrade guide: [`UPGRADING.md`](UPGRADING.md)
 - CLI usage: [`docs/cli.md`](docs/cli.md)
+- Verified registry behavior: [`docs/registry-compatibility.md`](docs/registry-compatibility.md)
 - API Reference Index: [`docs/api-reference.md`](docs/api-reference.md)
 - Client API: [`docs/api-client.md`](docs/api-client.md)
 - Session API: [`docs/api-session.md`](docs/api-session.md)

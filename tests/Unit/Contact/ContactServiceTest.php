@@ -117,6 +117,7 @@ final class ContactServiceTest extends TestCase
         $result = $service->create([
             'email' => 'person@example.rs',
             'id' => 'C-200',
+            'voice' => '+381.111111',
             'postalInfo' => [
                 'address' => [
                     'city' => 'Belgrade',
@@ -129,6 +130,7 @@ final class ContactServiceTest extends TestCase
 
         self::assertStringContainsString('<contact:create', $transport->writtenPayload);
         self::assertStringContainsString('<contact:id>OBL-C-200</contact:id>', $transport->writtenPayload);
+        self::assertStringContainsString('<contact:voice>+381.111111</contact:voice>', $transport->writtenPayload);
         self::assertSame('C-200', $result['id']);
         self::assertInstanceOf(\DateTimeImmutable::class, $result['createDate']);
         self::assertSame('2026-03-01T00:00:00+00:00', $result['createDate']?->format('c'));

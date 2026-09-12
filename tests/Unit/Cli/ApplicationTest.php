@@ -329,7 +329,7 @@ final class ApplicationTest extends TestCase
             [['domain:update', '{"name":"example.rs","add":{"statuses":["clientHold"]}}'], '', '<domain:status s="clientHold"/>'],
             [['contact:check', 'CID-1,CID-2'], '<contact:chkData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0"><contact:cd><contact:id avail="1">CID-1</contact:id></contact:cd></contact:chkData>', '<contact:id>CID-2</contact:id>'],
             [['contact:info', 'CID-1'], '<contact:infData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0"><contact:id>CID-1</contact:id></contact:infData>', '<contact:info'],
-            [['contact:create', '{"id":"OBL-CLI","postalInfo":{"name":"John Doe","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"email":"john@example.rs"}'], '<contact:creData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0"><contact:id>OBL-CLI</contact:id></contact:creData>', '<contact:id>OBL-CLI</contact:id>'],
+            [['contact:create', '{"id":"OBL-CLI","postalInfo":{"name":"John Doe","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"email":"john@example.rs","voice":"+381.111111"}'], '<contact:creData xmlns:contact="urn:ietf:params:xml:ns:contact-1.0"><contact:id>OBL-CLI</contact:id></contact:creData>', '<contact:id>OBL-CLI</contact:id>'],
             [['contact:update', '{"id":"CID-1","email":"updated@example.rs"}'], '', '<contact:email>updated@example.rs</contact:email>'],
             [['contact:delete', 'CID-1'], '', '<contact:delete'],
             [['host:check', 'ns1.example.rs,ns2.example.rs'], '<host:chkData xmlns:host="urn:ietf:params:xml:ns:host-1.0"><host:cd><host:name avail="1">ns1.example.rs</host:name></host:cd></host:chkData>', '<host:name>ns2.example.rs</host:name>'],

@@ -195,8 +195,18 @@ jobs:
         env:
           RNIDS_EPP_CLIENT_CERT_PATH: tests/fixtures/client.pem
           RNIDS_EPP_CA_CERT_PATH: tests/fixtures/root.pem
+          RNIDS_EPP_RESOURCE_LEDGER: ${{ runner.temp }}/rnids-live-resources.json
         run: composer test:live
 
       - name: Remove RNIDS certificates
         if: always()
         run: rm -f tests/fixtures/client.pem tests/fixtures/root.pem
+
+      - name: Preserve owned resource cleanup ledger
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rnids-live-resources-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/rnids-live-resources.json
+          if-no-files-found: ignore
+          retention-days: 90

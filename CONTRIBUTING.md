@@ -107,6 +107,11 @@ tests fail the live job. Configure secrets `RNIDS_EPP_USER`, `RNIDS_EPP_PASS`,
 `RNIDS_EPP_CERT`, `RNIDS_EPP_ROOT`, and `RNIDS_EPP_CLIENT_CERT_PASSWORD`, plus
 repository variables matching the fixture names above. Live runs share one
 repository-wide concurrency group and an active run is not canceled by a newer run.
+After any outcome, CI uploads the ownership JSON as
+`rnids-live-resources-<run_id>-<attempt>` when the ledger exists, retained for 90 days.
+Download it from the workflow run and record pending or failed resources in Beads
+for follow-up before the artifact expires. The artifact contains resource names
+and cleanup states; certificates and protocol logs are not included.
 
 Transfer lifecycle verification remains an external prerequisite: it needs two authorized registrar accounts, certificates for each, a disposable domain, and the RNIDS transfer-code/approval workflow. This suite does not claim successful transfer coverage from a single account or fabricated responses.
 
@@ -116,6 +121,12 @@ command exited 1 due to `--fail-on-skipped`. DNSSEC DS acceptance, complete tran
 workflows, secure-mode changes, and contact clearing require additional recorded
 scenarios; they are not established by those five cases. See the LTS acceptance
 conditions in [SUPPORT.md](SUPPORT.md).
+
+September 12 checks repeated those five cases with verified TLS and additionally
+confirmed DS provisioning/update round trips and field-specific contact clearing.
+Secure-mode change acceptance was observed, with external completion still pending.
+The current [registry compatibility record](docs/registry-compatibility.md) includes
+the resulting contact restrictions and the remaining acceptance limits.
 
 ## Coding conventions
 

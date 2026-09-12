@@ -8,6 +8,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use RNIDS\Contact\ContactRequestFactory;
+use RNIDS\Contact\Dto\ContactAddress;
+use RNIDS\Contact\Dto\ContactExtension;
+use RNIDS\Contact\Dto\ContactPostalInfo;
+use RNIDS\Contact\Dto\ContactUpdateRequest;
 use RNIDS\Xml\Contact\ContactUpdateRequestBuilder;
 use RNIDS\Xml\NamespaceRegistry;
 
@@ -19,7 +23,6 @@ final class ContactUpdateClearingTest extends TestCase
      */
     public static function communicationFields(): iterable
     {
-        yield 'voice' => [ 'field' => 'voice', 'element' => 'contact:voice' ];
         yield 'fax' => [ 'field' => 'fax', 'element' => 'contact:fax' ];
         yield 'authorization password' => [ 'field' => 'authInfo', 'element' => 'contact:authInfo/contact:pw' ];
     }
@@ -35,7 +38,7 @@ final class ContactUpdateClearingTest extends TestCase
     }
 
     #[DataProvider('communicationFields')]
-    public function testUpdateEmitsAnEmptyElementToClearOptionalCommunicationField(string $field, string $element): void
+    public function testUpdateEmitsTheRequestedEmptyCommunicationElement(string $field, string $element): void
     {
         $request = (new ContactRequestFactory())->updateFromArray([ 'id' => 'LEGACY-42', $field => '' ]);
         $xml = (new ContactUpdateRequestBuilder())->build($request, 'CLEAR-1');
@@ -60,27 +63,29 @@ final class ContactUpdateClearingTest extends TestCase
         self::assertSame(0, $this->xpath($xml)->query('//contact:chg/' . $element)->length);
     }
 
-    public function testUpdateClearsOptionalPostalAndIdentificationStrings(): void
+    public function testExplicitDtoEmitsEmptyElementsWithoutApplyingRegistryUpdatePolicy(): void
     {
-        $request = (new ContactRequestFactory())->updateFromArray([
-            'extension' => [ 'identDescription' => '', 'vatNo' => '' ],
-            'id' => 'LEGACY-42',
-            'postalInfo' => [
-                'address' => [
-                    'city' => 'Belgrade',
-                    'countryCode' => 'RS',
-                    'postalCode' => '',
-                    'province' => '',
-                    'streets' => [ 'Main 1' ],
-                ],
-                'name' => 'Person Example',
-                'organization' => '',
-            ],
-        ]);
+        $request = new ContactUpdateRequest(
+            id: 'LEGACY-42',
+            addStatuses: [],
+            removeStatuses: [],
+            postalInfo: new ContactPostalInfo(
+                'loc',
+                'Person Example',
+                '',
+                new ContactAddress(['Main 1'], 'Belgrade', 'RS', '', ''),
+            ),
+            voice: '',
+            fax: null,
+            email: null,
+            authInfo: null,
+            disclose: null,
+            extension: new ContactExtension(null, '', null, null, null, ''),
+        );
         $xml = (new ContactUpdateRequestBuilder())->build($request, 'CLEAR-2');
         $xpath = $this->xpath($xml);
 
-        $elements = [ 'contact:org', 'contact:sp', 'contact:pc', 'contactExt:identDescription', 'contactExt:vatNo' ];
+        $elements = [ 'contact:voice', 'contact:org', 'contact:sp', 'contact:pc', 'contactExt:identDescription', 'contactExt:vatNo' ];
 
         foreach ($elements as $element) {
             $nodes = $xpath->query('//' . $element);
@@ -96,6 +101,7 @@ final class ContactUpdateClearingTest extends TestCase
         (new ContactRequestFactory())->createFromArray([
             'email' => 'person@example.rs',
             'fax' => '',
+            'voice' => '+381.111111',
             'postalInfo' => [
                 'address' => [ 'streets' => [ 'Main 1' ], 'city' => 'Belgrade', 'countryCode' => 'RS' ],
                 'name' => 'Person Example',

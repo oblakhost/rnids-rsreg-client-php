@@ -31,6 +31,7 @@ final class ContactDisclosureTest extends TestCase
             'disclose' => $disclose,
             'email' => 'person@example.rs',
             'id' => 'C-123',
+            'voice' => '+381.111111',
             'postalInfo' => [
                 'address' => [ 'streets' => [ 'Main 1' ], 'city' => 'Belgrade', 'countryCode' => 'RS' ],
                 'name' => 'Person Example',

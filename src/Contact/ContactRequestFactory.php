@@ -49,7 +49,7 @@ final class ContactRequestFactory
      *       postalCode?: non-empty-string|null
      *     }
      *   },
-     *   voice?: non-empty-string|null,
+     *   voice: non-empty-string,
      *   fax?: non-empty-string|null,
      *   email: non-empty-string,
      *   authInfo?: non-empty-string|null,
@@ -71,7 +71,11 @@ final class ContactRequestFactory
         return new ContactCreateRequest(
             $this->contactIdPolicy->normalizeForCreate($request['id'] ?? null),
             $this->requirePostalInfoForCreate($request, $extension),
-            $this->optionalNullableString($request, 'voice'),
+            $this->requireString(
+                $request,
+                'voice',
+                'Contact create request key "%s" must be a non-empty string.',
+            ),
             $this->optionalNullableString($request, 'fax'),
             $this->requireString(
                 $request,
@@ -92,16 +96,16 @@ final class ContactRequestFactory
      *   postalInfo?: array{
      *     type?: 'loc'|'int',
      *     name: string,
-     *     organization?: string|null,
+     *     organization?: non-empty-string|null,
      *     address: array{
      *       streets: non-empty-list<non-empty-string>,
      *       city: non-empty-string,
      *       countryCode: non-empty-string,
-     *       province?: string|null,
-     *       postalCode?: string|null
+     *       province?: non-empty-string|null,
+     *       postalCode?: non-empty-string|null
      *     }
      *   }|null,
-     *   voice?: string|null,
+     *   voice?: non-empty-string|null,
      *   fax?: string|null,
      *   email?: non-empty-string|null,
      *   authInfo?: string|null,
@@ -129,7 +133,7 @@ final class ContactRequestFactory
             $this->optionalStatuses($request, 'addStatuses'),
             $this->optionalStatuses($request, 'removeStatuses'),
             $this->optionalPostalInfo($request, $extension),
-            $this->optionalNullableString($request, 'voice', true),
+            $this->optionalNullableString($request, 'voice'),
             $this->optionalNullableString($request, 'fax', true),
             $this->optionalNullableString($request, 'email'),
             $this->optionalNullableString($request, 'authInfo', true),
@@ -232,7 +236,7 @@ final class ContactRequestFactory
             );
         }
 
-        $parsed = $this->parsePostalInfo($postalInfo, true);
+        $parsed = $this->parsePostalInfo($postalInfo);
 
         if ('' === \trim($parsed->name) && !$this->allowsEmptyName($extension, $parsed)) {
             throw new \InvalidArgumentException('Contact postalInfo key "name" must be a non-empty string.');

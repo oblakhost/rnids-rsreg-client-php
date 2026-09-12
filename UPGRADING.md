@@ -34,14 +34,20 @@ development behavior applies to production. TLS verification remains enabled.
 
 ## Contacts
 
+- Creation requires a nonempty `voice` phone number. Missing or `null` voice now
+  fails local validation; live RNIDS creation returned `2400` without this field.
 - Creation still normalizes IDs with the `OBL-` prefix and generates an ID if
   omitted. Use the ID returned by `create()` for update, info, and delete; all
   three now send that supplied ID literally.
 - `extension.identDescription` comes from your input. Supply any desired value
   explicitly; the client no longer injects a vendor description.
 - An omitted or `null` optional text update leaves the value unchanged. An empty
-  string clears supported optional text fields. Required values and typed
-  extension fields cannot be cleared with empty strings.
+  string clears fax, `ident`, `identDescription`, and `vatNo`. Empty voice,
+  organization, province, and postal-code updates now fail local validation: live
+  RNIDS checks showed rejection or retention of the previous value. Supply a
+  nonempty replacement or omit the field. Required values and typed extension
+  fields cannot be cleared with empty strings. Empty authInfo is accepted as a
+  request, but the registry does not expose its resulting value for verification.
 - Read the [contact response shape](docs/api-contact.md) for the current flat
   postal aliases and existing status keys.
 

@@ -135,7 +135,7 @@ final class ContactService
      *       postalCode?: non-empty-string|null
      *     }
      *   },
-     *   voice?: non-empty-string|null,
+     *   voice: non-empty-string,
      *   fax?: non-empty-string|null,
      *   email: non-empty-string,
      *   authInfo?: non-empty-string|null,
@@ -243,16 +243,16 @@ final class ContactService
      *   postalInfo?: array{
      *     type?: 'loc'|'int',
      *     name: string,
-     *     organization?: string|null,
+     *     organization?: non-empty-string|null,
      *     address: array{
      *       streets: non-empty-list<non-empty-string>,
      *       city: non-empty-string,
      *       countryCode: non-empty-string,
-     *       province?: string|null,
-     *       postalCode?: string|null
+     *       province?: non-empty-string|null,
+     *       postalCode?: non-empty-string|null
      *     }
      *   }|null,
-     *   voice?: string|null,
+     *   voice?: non-empty-string|null,
      *   fax?: string|null,
      *   email?: non-empty-string|null,
      *   authInfo?: string|null,

@@ -73,7 +73,7 @@ references for complete fields and registry requirements.
 ```sh
 vendor/bin/rsreg domain:register '{"name":"example.rs","registrant":"CID-REG","period":1,"contacts":[{"type":"admin","handle":"CID-ADMIN"},{"type":"tech","handle":"CID-TECH"}]}'
 vendor/bin/rsreg domain:update '{"name":"example.rs","add":{"statuses":["clientHold"]}}'
-vendor/bin/rsreg contact:create '{"id":"OBL-NEW","postalInfo":{"name":"John Doe","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"email":"john@example.rs"}'
+vendor/bin/rsreg contact:create '{"id":"OBL-NEW","postalInfo":{"name":"John Doe","address":{"streets":["123 Main St"],"city":"Belgrade","countryCode":"RS"}},"voice":"+381.111234567","email":"john@example.rs"}'
 vendor/bin/rsreg contact:update '{"id":"CID-12345","email":"new@example.rs"}'
 vendor/bin/rsreg host:create '{"name":"ns7.example.rs","addresses":[{"address":"192.0.2.7","ipVersion":"v4"}]}'
 vendor/bin/rsreg host:update '{"name":"ns7.example.rs","add":{"addresses":[{"address":"2001:db8::7","ipVersion":"v6"}]}}'

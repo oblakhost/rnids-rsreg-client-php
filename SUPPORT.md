@@ -21,8 +21,10 @@ Use [UPGRADING.md](UPGRADING.md) when migrating from 1.x.
 The 2.x line is **not yet designated LTS**. That designation requires recorded
 RNIDS acceptance results for DNSSEC DS provisioning, all transfer stages using
 two registrar accounts, approved poll acknowledgment, secure-mode changes, and
-contact clearing. Successful offline tests or a skipped live test do not establish
-registry acceptance. This is a project support policy, not RNIDS certification.
+contact clearing. The [registry compatibility record](docs/registry-compatibility.md)
+distinguishes completed checks from outstanding external workflows. Successful
+offline tests or a skipped live test do not establish registry acceptance. This
+is a project support policy, not RNIDS certification.
 
 `master` publishes stable 2.x releases; `develop`, `alpha`, and `beta` publish
 prereleases. Before development moves to a new major on `master`, create and test
@@ -56,9 +58,13 @@ New implementation helpers explicitly marked `@internal` are outside that contra
   objects; nullable fields remain nullable. Mutations documented to return `[]`
   continue to do so, with result metadata available through `responseMeta()`.
 - For supported optional contact text updates, omission or `null` leaves the field
-  unchanged and `''` clears it. Required or typed fields follow the operation's
-  validation rules. See the [contact API](docs/api-contact.md).
-- Contact creation retains the `OBL-` prefix policy. Pass the returned ID to later
+  unchanged and `''` clears it. Empty voice, organization, province, and postal-code
+  updates are rejected locally because the registry rejects or ignores them.
+  Required or typed fields follow the operation's validation rules. Empty authInfo
+  can be submitted but its resulting state is not exposed for readback. See the
+  [contact API](docs/api-contact.md).
+- Contact creation requires a nonempty `voice` phone number and retains the
+  `OBL-` prefix policy. Pass the returned ID to later
   operations, which preserve it literally. The prefix is library policy, not an
   RNIDS affiliation marker or a general registry requirement.
 - Protocol failures preserve result codes and metadata through `ProtocolException`;

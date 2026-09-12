@@ -32,6 +32,8 @@ Policy behavior:
 
 - `id` is optional. If omitted/empty, library auto-generates a contact ID.
 - Contact IDs are normalized to the `OBL-` prefix before sending create commands.
+- `voice` must be a nonempty phone number. Missing, `null`, or empty voice fails
+  locally; the development registry returned `2400` when voice was omitted.
 - `postalInfo.name` is required by default.
   - Exception: it may be empty when `extension.isLegalEntity = '1'`
     and `postalInfo.organization` is provided.
@@ -43,12 +45,13 @@ Response shape:
 array{id: string|null, createDate: \DateTimeImmutable|null}
 ```
 
-The create payload includes an email and postal information; the RNIDS extension
+The create payload includes a phone number, email, and postal information; the RNIDS extension
 is optional and its string values are supplied by the caller:
 
 ```php
 $contact = $client->contact()->create([
     'email' => 'person@example.rs',
+    'voice' => '+381.111234567',
     'postalInfo' => [
         'type' => 'loc', // Optional; defaults to loc. Also accepts int.
         'name' => 'Person Example',
@@ -69,7 +72,7 @@ $contact = $client->contact()->create([
 ]);
 ```
 
-Other optional create keys are `voice`, `fax`, `authInfo`, and `disclose` (`0` or `1`).
+Other optional create keys are `fax`, `authInfo`, and `disclose` (`0` or `1`).
 Extension keys are `ident`, `identDescription`, `identExpiry`, `identKind`,
 `isLegalEntity`, and `vatNo`. Supplied optional create strings must be nonempty;
 use omission or `null` for unavailable values. `disclose` postal entries use the
@@ -137,10 +140,16 @@ Policy behavior:
 
 - `id` is required and sent literally, matching `info()` and `delete()`. Use the
   identifier returned by `create()` when updating a newly created contact.
-- Omitted or `null` optional values leave the registry value unchanged. Set an
-  optional string to `''` to send an empty element and clear it. This applies to
-  `voice`, `fax`, `authInfo`, postal `organization`, address `province` and
-  `postalCode`, and extension `ident`, `identDescription`, and `vatNo`. Email,
+- Omitted or `null` optional values leave the registry value unchanged. Set `fax`
+  or extension `ident`, `identDescription`, or `vatNo` to `''` to send an empty
+  element and clear it; these fields were verified against the development registry.
+- `voice`, postal `organization`, address `province`, and `postalCode` must be
+  nonempty when supplied. RNIDS rejects clearing voice because phone is mandatory;
+  empty organization/province/postal-code updates were accepted but left the old
+  values unchanged. The library rejects these unsupported clearing requests before
+  sending them. Omit the field, pass `null`, or supply a nonempty replacement.
+- Empty `authInfo` is submitted and was accepted by the registry, but contact info
+  does not expose its value, so its resulting state has not been verified. Email,
   city, country code, street values, and typed extension fields `identExpiry`,
   `identKind`, and `isLegalEntity` must remain nonempty when supplied.
 - Supply the full address whenever changing any address field. Postal updates
@@ -160,7 +169,8 @@ $client->contact()->update([
 ]);
 ```
 
-The clearing semantics follow the [RNIDS contact reference](epp-protocol/epp-contact-commands.md).
+See the [verified registry behavior](registry-compatibility.md) and
+[contact protocol reference](epp-protocol/epp-contact-commands.md) for clearing limits.
 Disclosure attributes follow [RFC 5733, section 4](https://www.rfc-editor.org/rfc/rfc5733.html#section-4).
 
 Request keys are `id`, `addStatuses`, `removeStatuses`, `postalInfo`, `voice`, `fax`,

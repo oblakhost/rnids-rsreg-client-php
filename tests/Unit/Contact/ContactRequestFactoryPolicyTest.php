@@ -248,6 +248,7 @@ final class ContactRequestFactoryPolicyTest extends TestCase
      * @return array{
      *   email: string,
      *   id: string,
+     *   voice: string,
      *   postalInfo: array{
      *     address: array{city: string, countryCode: string, streets: list<string>},
      *     name: string
@@ -259,6 +260,7 @@ final class ContactRequestFactoryPolicyTest extends TestCase
         return [
             'email' => 'person@example.rs',
             'id' => 'C-200',
+            'voice' => '+381.111111',
             'postalInfo' => [
                 'address' => [
                     'city' => 'Belgrade',
